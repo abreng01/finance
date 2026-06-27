@@ -133,9 +133,6 @@ export default function InflowsPage({ data, setData }) {
         );
       })()}
 
-      )}
-
-
       {/* Deployment Pool strip */}
       {totalPool>0&&(
         <Card style={{padding:"14px 18px"}}>

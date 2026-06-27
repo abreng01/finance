@@ -14,8 +14,8 @@ export default function AnalyticsPage({ data }) {
   const ppfV   = indiaHoldings.filter(h=>h.type==="PPF").reduce((s,h)=>s+(h.currentValue||0),0);
   const npsV   = indiaHoldings.filter(h=>h.type==="NPS").reduce((s,h)=>s+(h.currentValue||0),0);
   const total  = usINR+mfV+ppfV+npsV;
-  const equity = usINR+mfV;
-  const debt   = ppfV+npsV;
+  const equity    = usINR+mfV+ppfV;  // US + India MF + PPF
+  const retirement = npsV;              // NPS only
 
   const ownerData = OWNERS.map(o=>{
     const uV=usHoldings.filter(h=>h.owner===o.id).reduce((s,h)=>s+h.shares*(usPrices[h.ticker]||0),0)*usdInr;
@@ -73,8 +73,8 @@ export default function AnalyticsPage({ data }) {
 
       {/* Equity vs Debt */}
       <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
-        <StatCard label="Total Equity" value={equity?inr(equity):"—"} sub={total>0?((equity/total)*100).toFixed(0)+"% of portfolio":""} color={T.green} accent={T.green}/>
-        <StatCard label="Total Debt"   value={debt?inr(debt):"—"}     sub={total>0?((debt/total)*100).toFixed(0)+"% of portfolio":""}   color={T.gold}  accent={T.gold}/>
+        <StatCard label="Total Equity"      value={equity?inr(equity):"—"}      sub={total>0?((equity/total)*100).toFixed(0)+"% of portfolio":""} color={T.green}  accent={T.green}/>
+        <StatCard label="Retirement (NPS)"  value={retirement?inr(retirement):"—"} sub={total>0?((retirement/total)*100).toFixed(0)+"% of portfolio":""} color={T.purple} accent={T.purple}/>
       </div>
 
       {/* Breakdown bars */}

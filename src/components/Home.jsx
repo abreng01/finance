@@ -58,10 +58,10 @@ export default function HomePage({ data, setPage }) {
   const allocTotal   = usInvested + mfInvested + ppfVal + npsVal;
 
   const alloc = [
-    { name:"NTNX ESOP",       value:Math.round(ntnxInvested),         color:T.red,    warn: ntnxInvested/Math.max(allocTotal,1)>0.5 },
+    { name:"NTNX ESOP",       value:Math.round(ntnxInvested),         color:T.red },
     { name:"US ETFs",         value:Math.round(etfInvested),          color:T.blue   },
     { name:"India MF + PPF",  value:Math.round(mfInvested + ppfVal),  color:T.green  },
-    { name:"NPS (Retire)",    value:Math.round(npsVal),               color:T.purple },
+    { name:"NPS - Retirement Corpus", value:Math.round(npsVal),       color:T.purple },
   ].filter(d=>d.value>0);
 
   const geo = [
@@ -131,15 +131,14 @@ export default function HomePage({ data, setPage }) {
                 <div style={{ display:"flex", justifyContent:"space-between", fontSize:12, marginBottom:4, alignItems:"center" }}>
                   <div style={{ display:"flex", alignItems:"center", gap:5 }}>
                     <span style={{ color:T.muted }}>{d.name}</span>
-                    {d.warn&&<span style={{ fontSize:9, color:T.red, background:"rgba(255,94,107,0.12)",
-                      padding:"1px 5px", borderRadius:10, fontWeight:700 }}>HIGH</span>}
+
                   </div>
                   <div style={{ display:"flex", gap:8, alignItems:"baseline" }}>
                     <span style={{ fontSize:10, color:T.dim }}>{inr(d.value)}</span>
-                    <span style={{ color:d.warn?T.red:d.color, fontWeight:700 }}>{pct100.toFixed(0)}%</span>
+                    <span style={{ color:d.color, fontWeight:700 }}>{pct100.toFixed(0)}%</span>
                   </div>
                 </div>
-                <ProgressBar value={d.value} max={Math.max(allocTotal,1)} color={d.warn?T.red:d.color} h={6}/>
+                <ProgressBar value={d.value} max={Math.max(allocTotal,1)} color={d.color} h={6}/>
               </div>
             );
           }) : <div style={{ fontSize:12, color:T.dim, textAlign:"center", padding:"18px 0" }}>No data yet</div>}

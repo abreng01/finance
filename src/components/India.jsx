@@ -43,11 +43,9 @@ export default function IndiaPage({ data, setData }) {
     const amt = parseFloat(topUpForm.amount)||0;
     if(!amt) return;
     const pt = {id:"pt"+Date.now(),type:"topup",owner:topUpForm.owner,amount:amt,date:topUpForm.date,note:topUpForm.note};
-    // Also add to Inflows transactions so it counts toward monthly target
-    const tr = {id:"tr"+Date.now(),date:topUpForm.date,holdingId:"pool",
-      holdingName:"Pool Top-Up ("+own(topUpForm.owner).name+")",
-      portfolio:"india",amountINR:amt};
-    upd({poolTransactions:[...poolTxns,pt],transactions:[...(data.transactions||[]),tr]});
+    // Pool top-ups tracked in poolTransactions only
+    // Inflows page counts them separately for monthly total
+    upd({poolTransactions:[...poolTxns,pt]});
     setShowTopUp(false);
     setTopUpForm({owner:"abilash",amount:"",date:new Date().toISOString().slice(0,10),note:""});
   };

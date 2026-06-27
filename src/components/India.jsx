@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { T, OWNERS, PPF_ANNUAL_LIMIT } from '../config';
 import { inr, usd, pct, gc, own, fmtDate, fmtDateTime, daysLeft, timeLeft, getIndianFY } from '../helpers';
+import NPSProjection from './NPSProjection';
 import { OwnerBadge, Card, Btn, ProgressBar, SectionLabel, StatCard, Modal, Inp, TypeBtn, OwnerBtns, DelConfirm } from './shared';
 
 // ══════════════════════════════════════════════════════════════════════════════
@@ -385,6 +386,14 @@ export default function IndiaPage({ data, setData }) {
 
 
 
+
+      {/* ── NPS Projection (self-contained component) ─────────────────────── */}
+      <NPSProjection
+        npsValue={npsValue}
+        npsHoldingId={npsHolding?.id}
+        transactions={data.transactions}
+        currentAge={data.fireSettings?.currentAge || 38}
+      />
 
       {/* ── Deployment Pool ─────────────────────────────────────────────── */}
       <Card accent={T.gold} style={{padding:"18px 18px 16px"}}>

@@ -93,7 +93,7 @@ export default function USPage({ data, setData }) {
 
   const TH = () => (
     <tr style={{background:T.surf}}>
-      {[["","left"],["Ticker","left"],["Name","left"],["Type","left"],["Shares","right"],["Avg Cost","right"],["Price","right"],["Value USD","right"],["Value INR","right"],["G/L %","right"],["","right"]].map(([h,a],i)=>(
+      {[["","left"],["Ticker","left"],["Name","left"],["Type","left"],["Shares","right"],["Avg Cost","right"],["Invested","right"],["Price","right"],["Value USD","right"],["Value INR","right"],["G/L %","right"],["","right"]].map(([h,a],i)=>(
         <th key={i} style={{padding:"10px 13px",textAlign:a,color:T.muted,fontWeight:600,fontSize:10,letterSpacing:"0.1em",textTransform:"uppercase",borderBottom:`1px solid ${T.border}`,whiteSpace:"nowrap"}}>{h}</th>
       ))}
     </tr>
@@ -145,6 +145,7 @@ export default function USPage({ data, setData }) {
                     </td>
                     <td style={{padding:"12px 13px",textAlign:"right",fontFamily:"monospace"}}>{h.shares.toLocaleString()}</td>
                     <td style={{padding:"12px 13px",textAlign:"right",fontFamily:"monospace",color:T.muted}}>${h.avgCost.toFixed(2)}</td>
+                    <td style={{padding:"12px 13px",textAlign:"right",fontFamily:"monospace",color:T.muted}}>{usd(inv)}</td>
                     <td style={{padding:"12px 13px",textAlign:"right",fontFamily:"monospace"}}>{price!=null?<b>${price.toFixed(2)}</b>:<span style={{color:T.dim}}>—</span>}</td>
                     <td style={{padding:"12px 13px",textAlign:"right",fontFamily:"monospace",fontWeight:600}}>{val!=null?usd(val):<span style={{color:T.dim}}>—</span>}</td>
                     <td style={{padding:"12px 13px",textAlign:"right",fontFamily:"monospace",color:T.muted}}>{val!=null?inr(val*usdInr):"—"}</td>
@@ -163,7 +164,7 @@ export default function USPage({ data, setData }) {
             </tbody>
             <tfoot>
               <tr style={{background:T.surf,borderTop:`2px solid ${T.border}`}}>
-                <td colSpan={7} style={{padding:"12px 13px",fontSize:10,fontWeight:700,color:T.muted,textTransform:"uppercase",letterSpacing:"0.1em"}}>Total</td>
+                <td colSpan={8} style={{padding:"12px 13px",fontSize:10,fontWeight:700,color:T.muted,textTransform:"uppercase",letterSpacing:"0.1em"}}>Total</td>
                 <td style={{padding:"12px 13px",textAlign:"right",fontFamily:"monospace",fontWeight:800,fontSize:14,color:T.blue}}>{usd(totalUSD)}</td>
                 <td style={{padding:"12px 13px",textAlign:"right",fontFamily:"monospace",fontWeight:700,color:T.gold}}>{inr(totalINR)}</td>
                 <td style={{padding:"12px 13px",textAlign:"right"}}><span style={{fontWeight:800,color:gc(gainUSD)}}>{totalInvU?pct(gainUSD/totalInvU*100):"—"}</span></td>

@@ -8,7 +8,9 @@ import { OwnerBadge, Card, Btn, ProgressBar, SectionLabel, StatCard, Modal, Inp,
 // INFLOWS PAGE
 // ══════════════════════════════════════════════════════════════════════════════
 export default function InflowsPage({ data, setData }) {
-  const { transactions=[], indiaHoldings, usHoldings, usdInr, monthlyInflowTarget=252000, poolTransactions=[] } = data;
+  const { transactions:rawTransactions=[], indiaHoldings, usHoldings, usdInr, monthlyInflowTarget=252000, poolTransactions=[] } = data;
+  // Filter out any stale pool entries that were incorrectly added to transactions before fix
+  const transactions = rawTransactions.filter(t=>t.holdingId!=="pool");
   const [showDeployInflows, setShowDeployInflows] = useState(false);
   const [deployInflowForm, setDeployInflowForm]   = useState({owner:"abilash",amount:"",fundId:"",date:new Date().toISOString().slice(0,10),note:""});
 

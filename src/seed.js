@@ -1,0 +1,31 @@
+export const SEED = {
+  usHoldings: [
+    { id:'u1', ticker:'SCHG', name:'Schwab US Large-Cap Growth ETF',         shares:19,   avgCost:34.33, type:'ETF',  owner:'abilash' },
+    { id:'u2', ticker:'VXUS', name:'Vanguard Total International Stock ETF', shares:3,    avgCost:86.20, type:'ETF',  owner:'abilash' },
+    { id:'u3', ticker:'NTNX', name:'Nutanix Inc.',                           shares:1211, avgCost:69.04, type:'ESOP', owner:'abilash' },
+  ],
+  usPrices: { NTNX: 46.90 },
+  indiaHoldings: [
+    { id:'i1', name:'HDFC Nifty Next 50 Index Fund',  type:'MF',  category:'Index',       owner:'saiharini', units:3367.1,  invested:54997,     schemeCode:'', currentNav:0, currentValue:0 },
+    { id:'i2', name:'Edelweiss Mid Cap Fund',          type:'MF',  category:'Mid Cap',     owner:'saiharini', units:124.62,  invested:14999.19,  schemeCode:'', currentNav:0, currentValue:0 },
+    { id:'i3', name:'HDFC Flexi Cap Fund',             type:'MF',  category:'Flexi Cap',   owner:'saiharini', units:32.865,  invested:69996.25,  schemeCode:'', currentNav:0, currentValue:0 },
+    { id:'i4', name:'DSP Multi-Asset Allocation Fund', type:'MF',  category:'Hybrid',      owner:'saiharini', units:122.22,  invested:1999.9,    schemeCode:'', currentNav:0, currentValue:0 },
+    { id:'i5', name:'Invesco India Small Cap Fund',    type:'MF',  category:'Small Cap',   owner:'vishruth',  units:2.356,   invested:99.899,    schemeCode:'', currentNav:0, currentValue:0 },
+    { id:'i6', name:'Bandhan Large & Mid Cap Fund',    type:'MF',  category:'Large & Mid', owner:'vishruth',  units:342.718, invested:54997.225, schemeCode:'', currentNav:0, currentValue:0 },
+    { id:'i7', name:'Quant Flexi Cap Fund',            type:'MF',  category:'Flexi Cap',   owner:'vishruth',  units:464.818, invested:54997.295, schemeCode:'', currentNav:0, currentValue:0 },
+    { id:'i8', name:'PPF',         type:'PPF', category:'Debt',       owner:'saiharini', invested:0, currentValue:0 },
+    { id:'i9', name:'NPS (Tier I)',type:'NPS', category:'Retirement', owner:'abilash',   invested:0, currentValue:0 },
+  ],
+  goals: [
+    { id:'g1', name:'New Car', emoji:'🚗', targetAmount:1500000, targetDate:'2027-12-31', saved:0, note:'Short term — family car upgrade' },
+  ],
+  transactions:         [],
+  poolTransactions:     [],
+  emergencyFunds:       [],
+  monthlyExpenses:      0,
+  emergencyTargetMonths:6,
+  monthlyInflowTarget:  252000,
+  usdInr:               83.50,
+  lastUpdated:          null,
+  seedVersion:          3,
+};

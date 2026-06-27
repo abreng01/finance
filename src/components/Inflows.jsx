@@ -57,26 +57,22 @@ export default function InflowsPage({ data, setData }) {
   const now          = new Date();
   const thisMonthKey = now.toISOString().slice(0,7);
   const ytdKey       = String(now.getFullYear());
-  const thisMonth    = transactions.filter(t=>t.date.startsWith(thisMonthKey));
-  // Pool top-ups count toward monthly target but are tracked separately
-  const poolThisMonth = poolTransactions.filter(t=>t.type==="topup"&&t.date.startsWith(thisMonthKey));
-  const poolYTD       = poolTransactions.filter(t=>t.type==="topup"&&t.date.startsWith(ytdKey));
-  const thisMonthINR  = thisMonth.reduce((s,t)=>s+t.amountINR,0)
-                      + poolThisMonth.reduce((s,t)=>s+t.amount,0);
-  const ytdINR        = transactions.filter(t=>t.date.startsWith(ytdKey)).reduce((s,t)=>s+t.amountINR,0)
-                      + poolYTD.reduce((s,t)=>s+t.amount,0);
+  const thisMonth     = transactions.filter(t=>t.date&&t.date.startsWith(thisMonthKey));
+  const poolThisMonth = (poolTransactions||[]).filter(t=>t.type==="topup"&&t.date&&t.date.startsWith(thisMonthKey));
+  const poolYTD       = (poolTransactions||[]).filter(t=>t.type==="topup"&&t.date&&t.date.startsWith(ytdKey));
+  const thisMonthINR  = thisMonth.reduce((s,t)=>s+(t.amountINR||0),0)
+                      + poolThisMonth.reduce((s,t)=>s+(t.amount||0),0);
+  const ytdINR        = transactions.filter(t=>t.date&&t.date.startsWith(ytdKey)).reduce((s,t)=>s+(t.amountINR||0),0)
+                      + poolYTD.reduce((s,t)=>s+(t.amount||0),0);
 
   // Group by month descending
-  // Combine regular transactions + pool top-ups for the log display
-  const poolTopUps = poolTransactions.filter(t=>t.type==="topup").map(t=>({
-    id:t.id, date:t.date, holdingName:`💧 Pool Top-Up (${own(t.owner).name})`,
-    portfolio:"india", amountINR:t.amount, amount:t.amount,
-    owner:t.owner, currency:"INR", note:t.note, isPool:true,
-  }));
-  const allEntries = [...transactions, ...poolTopUps];
+  // Transaction log — regular investments only (pool activity visible in India tab)
   const grouped = {};
-  [...allEntries].sort((a,b)=>b.date.localeCompare(a.date)).forEach(t=>{
-    const k=t.date.slice(0,7); if(!grouped[k]) grouped[k]=[]; grouped[k].push(t);
+  [...transactions].sort((a,b)=>(b.date||"").localeCompare(a.date||"")).forEach(t=>{
+    const k=(t.date||"").slice(0,7);
+    if(!k) return;
+    if(!grouped[k]) grouped[k]=[];
+    grouped[k].push(t);
   });
   const months = Object.keys(grouped).sort().reverse();
 
@@ -85,7 +81,7 @@ export default function InflowsPage({ data, setData }) {
     const d = new Date(now.getFullYear(), now.getMonth()-11+i, 1);
     const k = d.toISOString().slice(0,7);
     const label = d.toLocaleDateString("en-IN",{month:"short"});
-    return { label, total:Math.round((grouped[k]||[]).reduce((s,t)=>s+t.amountINR,0)), isCurrent:k===thisMonthKey };
+    return { label, total:Math.round((grouped[k]||[]).reduce((s,t)=>s+(t.amountINR||0),0)), isCurrent:k===thisMonthKey };
   });
 
   const fmtMonth = k => new Date(k+"-01").toLocaleDateString("en-IN",{month:"long",year:"numeric"});

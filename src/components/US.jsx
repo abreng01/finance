@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { T, OWNERS, PPF_ANNUAL_LIMIT } from '../config';
+import { T, OWNERS, PPF_ANNUAL_LIMIT, FINNHUB_KEY } from '../config';
 import { inr, usd, pct, gc, own, fmtDate, fmtDateTime, daysLeft, timeLeft, getIndianFY } from '../helpers';
 import { OwnerBadge, Card, Btn, ProgressBar, SectionLabel, StatCard, Modal, Inp, TypeBtn, OwnerBtns, DelConfirm } from './shared';
 
@@ -40,25 +40,42 @@ export default function USPage({ data, setData }) {
   };
 
   const tryFetch = async () => {
-    setFetching(true); setFetchMsg({text:"",ok:true});
-    const tickers=[...new Set(usHoldings.map(h=>h.ticker))];
-    const sym=[...tickers,"USDINR=X"].join(",");
-    const YF=`https://query2.finance.yahoo.com/v7/finance/quote?symbols=${sym}&fields=regularMarketPrice,symbol`;
-    for (const a of [()=>fetch(YF),()=>fetch(`https://corsproxy.io/?${encodeURIComponent(YF)}`),()=>fetch(`https://api.allorigins.win/raw?url=${encodeURIComponent(YF)}`)]) {
+    setFetching(true); setFetchMsg({text:"Fetching prices…",ok:true});
+
+    try {
+      // ── USD/INR via exchangerate-api (no key needed) ──────────────────────
+      let newRate = usdInr;
       try {
-        const r=await a(); const d=await r.json();
-        const quotes=d?.quoteResponse?.result??[];
-        if(!quotes.length) continue;
-        const map={};
-        quotes.forEach(q=>{if(q.regularMarketPrice)map[q.symbol==="USDINR=X"?"USDINR":q.symbol]=q.regularMarketPrice;});
-        const {USDINR:rate,...tp}=map;
-        if(Object.keys(tp).length){
-          upd({usPrices:{...usPrices,...tp},usdInr:rate||usdInr,lastUpdated:new Date().toISOString()});
-          setFetchMsg({text:"✅ Prices refreshed",ok:true}); setFetching(false); return;
-        }
+        const fx = await fetch("https://api.exchangerate-api.com/v4/latest/USD");
+        const fxd = await fx.json();
+        if(fxd?.rates?.INR) newRate = fxd.rates.INR;
       } catch {}
+
+      // ── Stock prices via Finnhub ──────────────────────────────────────────
+      const tickers = [...new Set(usHoldings.map(h=>h.ticker))];
+      const results = await Promise.all(tickers.map(async ticker => {
+        try {
+          const r = await fetch(`https://finnhub.io/api/v1/quote?symbol=${ticker}&token=${FINNHUB_KEY}`);
+          const d = await r.json();
+          return { ticker, price: d.c || null };
+        } catch { return { ticker, price: null }; }
+      }));
+
+      const newPrices = {...usPrices};
+      results.forEach(({ticker,price}) => { if(price>0) newPrices[ticker]=price; });
+      const fetched = results.filter(r=>r.price>0).length;
+
+      upd({usPrices:newPrices, usdInr:newRate, lastUpdated:new Date().toISOString()});
+      setFetchMsg({
+        text: fetched>0
+          ? `✅ ${fetched}/${tickers.length} prices · ₹${newRate.toFixed(2)}/USD`
+          : "⚠️ Prices unavailable — enter manually",
+        ok: fetched>0
+      });
+    } catch(e) {
+      setFetchMsg({text:"⚠️ Fetch failed — enter prices manually",ok:false});
     }
-    setFetchMsg({text:"⚠️ Auto-fetch blocked — use ✏️ Update Prices",ok:false}); setFetching(false);
+    setFetching(false);
   };
 
   const openAdd  = () => { setEditId(null); setForm({ticker:"",name:"",shares:"",avgCost:"",type:"ETF",owner:"abilash"}); setFormErr(""); setShowEdit(true); };

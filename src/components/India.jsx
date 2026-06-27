@@ -80,10 +80,8 @@ export default function IndiaPage({ data, setData }) {
   };
 
   // A holding is considered "valued" only if it has a real current value
-  const isValued = h => {
-    if(h.type==="MF") return h.currentNav>0;
-    return (h.currentValue||0)>0;
-  };
+  // G/L only makes sense for MFs — PPF has fixed 7.1% return, NPS has no cost basis
+  const isValued = h => h.type==="MF" && h.currentNav>0;
 
   // NPS = retirement (locked). PPF = long-term (15yr lock). Both non-liquid.
   const npsHolding  = indiaHoldings.find(h=>h.type==="NPS");

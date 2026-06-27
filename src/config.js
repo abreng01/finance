@@ -28,5 +28,8 @@ export const NAV_ITEMS = [
   { id:'emergency', icon:'🛡️', label:'Emergency'   },
 ];
 
+// ── API Keys ─────────────────────────────────────────────────────────────────
+export const FINNHUB_KEY = 'd8vna3hr01qgrv4pkhngd8vna3hr01qgrv4pkho0';
+
 // ── Constants ─────────────────────────────────────────────────────────────────
 export const PPF_ANNUAL_LIMIT = 150000;

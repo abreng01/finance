@@ -1,4 +1,4 @@
-import { OWNERS } from './config';
+import { OWNERS, T } from './config';
 
 // ── Number formatters ─────────────────────────────────────────────────────────
 const CR = 10000000, L = 100000;
@@ -15,7 +15,7 @@ export const usd = (n, sign = false) =>
   '$' + Math.abs(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
 export const pct  = (n) => (n >= 0 ? '+' : '') + n.toFixed(1) + '%';
-export const gc   = (n, T) => n >= 0 ? T.green : T.red;
+export const gc   = (n) => n >= 0 ? T.green : T.red;
 export const own  = (id) => OWNERS.find(o => o.id === id) || OWNERS[0];
 
 export const fmtDate = (ts) =>

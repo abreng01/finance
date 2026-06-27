@@ -107,6 +107,17 @@ export default function IndiaPage({ data, setData }) {
   const npsLumpSum    = npsProjCorpus * 0.60;  // tax-free at 60
   const npsAnnuity    = npsProjCorpus * 0.40;  // must buy annuity
   const npsPension    = npsAnnuity * 0.06 / 12; // ~6% annuity rate
+  const npsScenarios  = [
+    {rate:8,  label:"Conservative"},
+    {rate:10, label:"Base"},
+    {rate:12, label:"Optimistic"},
+  ].map(s => {
+    const sr   = s.rate/100/12;
+    const sn   = yrsToRetire * 12;
+    const proj = effectiveNPS * Math.pow(1+s.rate/100, yrsToRetire)
+               + NPS_MONTHLY  * (Math.pow(1+sr,sn)-1)/sr*(1+sr);
+    return {...s, proj, pension: proj*0.4*0.06/12};
+  });
   // MF invested = the amount deployed into mutual funds
   const mfInv       = indiaHoldings.filter(h=>h.type==="MF").reduce((s,h)=>s+(h.invested||0),0);
   // Combined MF+PPF invested for card 2
@@ -472,22 +483,17 @@ export default function IndiaPage({ data, setData }) {
             Scenarios
           </div>
           <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:8,marginBottom:12}}>
-            {[{r:8,label:"Conservative"},{r:10,label:"Base"},{r:12,label:"Optimistic"}].map(({r:rate,label})=>{
-              const rr=rate/100/12, nn=yrsToRetire*12;
-              const proj = effectiveNPS*Math.pow(1+rate/100,yrsToRetire)
-                         + NPS_MONTHLY*(Math.pow(1+rr,nn)-1)/rr*(1+rr);
-              return (
-                <div key={rate} style={{background:T.surf,borderRadius:8,padding:"10px 12px",
-                  border:rate===10?`1px solid ${T.purple}`:"none"}}>
-                  <div style={{fontSize:10,color:T.muted,marginBottom:4}}>{label} ({rate}%)</div>
-                  <div style={{fontFamily:"monospace",fontWeight:700,fontSize:13,
-                    color:rate===10?T.purple:T.text}}>{inr(proj)}</div>
-                  <div style={{fontSize:10,color:T.muted,marginTop:2}}>
-                    ~{inr(proj*0.4*0.06/12)}/mo pension
-                  </div>
+            {npsScenarios.map(s=>(
+              <div key={s.rate} style={{background:T.surf,borderRadius:8,padding:"10px 12px",
+                border:s.rate===10?`1px solid ${T.purple}`:"none"}}>
+                <div style={{fontSize:10,color:T.muted,marginBottom:4}}>{s.label} ({s.rate}%)</div>
+                <div style={{fontFamily:"monospace",fontWeight:700,fontSize:13,
+                  color:s.rate===10?T.purple:T.text}}>{inr(s.proj)}</div>
+                <div style={{fontSize:10,color:T.muted,marginTop:2}}>
+                  ~{inr(s.pension)}/mo pension
                 </div>
-              );
-            })}
+              </div>
+            ))}
           </div>
 
           <div style={{fontSize:11,color:T.dim,lineHeight:1.6,borderTop:`1px solid ${T.border}`,paddingTop:10}}>

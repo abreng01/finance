@@ -12,7 +12,6 @@ export default function IndiaPage({ data, setData }) {
   const [showEdit,    setShowEdit]   = useState(false);
   const [editId,      setEditId]     = useState(null);
   const [showTopUp,      setShowTopUp]     = useState(false);
-  const [showNPSProj,    setShowNPSProj]   = useState(false);
   const [showDeploy,  setShowDeploy] = useState(false);
   const [topUpForm,   setTopUpForm]  = useState({owner:"abilash",amount:"",date:new Date().toISOString().slice(0,10),note:""});
   const [deployForm,  setDeployForm] = useState({owner:"abilash",amount:"",fundId:"",date:new Date().toISOString().slice(0,10),note:""});
@@ -86,26 +85,9 @@ export default function IndiaPage({ data, setData }) {
   const npsHolding  = indiaHoldings.find(h=>h.type==="NPS");
   const ppfHolding  = indiaHoldings.find(h=>h.type==="PPF");
 
-  // ── NPS Projection ─────────────────────────────────────────────────────────
-  const NPS_MONTHLY   = 52461;
-  const NPS_RATE      = 10;   // % p.a. expected return
-  const currentAge    = data.fireSettings?.currentAge || 38;
-  const retireAge     = 60;
-  const yrsToRetire   = retireAge - currentAge;
-  // Adhoc NPS contributions logged in Inflows (on top of auto ₹52,461)
-  const npsAdhoc      = (data.transactions||[])
-    .filter(t => t.holdingId === (npsHolding?.id||'i9') && (t.amountINR||0) > 0)
-    .reduce((s,t) => s + (t.amountINR||0), 0);
-  const effectiveNPS  = npsValue + npsAdhoc;
-  const r             = NPS_RATE/100/12;
-  const n             = yrsToRetire * 12;
-  const npsProjCorpus = effectiveNPS * Math.pow(1+NPS_RATE/100, yrsToRetire)
-                      + NPS_MONTHLY * (Math.pow(1+r,n)-1)/r*(1+r);
-  const npsLumpSum    = npsProjCorpus * 0.60;  // tax-free at 60
-  const npsAnnuity    = npsProjCorpus * 0.40;  // must buy annuity
-  const npsPension    = npsAnnuity * 0.06 / 12; // ~6% annuity rate
   const npsValue    = npsHolding?.currentValue||0;
   const ppfValue    = ppfHolding?.currentValue||0;
+
   // MF invested = the amount deployed into mutual funds
   const mfInv       = indiaHoldings.filter(h=>h.type==="MF").reduce((s,h)=>s+(h.invested||0),0);
   // Combined MF+PPF invested for card 2
@@ -316,25 +298,13 @@ export default function IndiaPage({ data, setData }) {
           <div style={{fontSize:10,color:T.muted,marginTop:4,lineHeight:1.5}}>
             ₹52,461/mo auto · Locked until retirement
           </div>
-          {npsAdhoc>0&&(
-            <div style={{fontSize:10,color:T.green,marginTop:2}}>
-              +{inr(npsAdhoc)} adhoc logged
-            </div>
-          )}
-          <div style={{display:"flex",gap:10,marginTop:6,flexWrap:"wrap"}}>
-            {npsHolding&&(
-              <button onClick={()=>openEdit(npsHolding)}
-                style={{background:"none",border:"none",color:T.blue,cursor:"pointer",fontSize:11,
-                  fontWeight:600,padding:0}}>
-                ✏️ Update balance
-              </button>
-            )}
-            <button onClick={()=>setShowNPSProj(p=>!p)}
-              style={{background:"none",border:"none",color:T.purple,cursor:"pointer",fontSize:11,
-                fontWeight:600,padding:0}}>
-              {showNPSProj?"▲ Hide":"📈 Projection"}
+          {npsHolding&&(
+            <button onClick={()=>openEdit(npsHolding)}
+              style={{background:"none",border:"none",color:T.blue,cursor:"pointer",fontSize:11,
+                fontWeight:600,padding:"4px 0 0",display:"block"}}>
+              ✏️ Update balance
             </button>
-          </div>
+          )}
         </Card>
 
         {/* Card 2: MF + PPF Invested */}
@@ -415,86 +385,6 @@ export default function IndiaPage({ data, setData }) {
 
 
 
-      {/* ── NPS Projection Panel ─────────────────────────────────────────── */}
-      {showNPSProj&&(
-        <Card accent={T.purple} style={{padding:"18px 20px"}}>
-          <div style={{fontSize:10,fontWeight:700,color:T.muted,textTransform:"uppercase",
-            letterSpacing:"0.12em",marginBottom:14}}>
-            📈 NPS Corpus Projection — Age {currentAge} → {retireAge}
-          </div>
-
-          {/* Key numbers */}
-          <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(140px,1fr))",gap:10,marginBottom:16}}>
-            <div style={{background:T.surf,borderRadius:10,padding:"10px 14px"}}>
-              <div style={{fontSize:10,color:T.muted,marginBottom:4}}>Base corpus today</div>
-              <div style={{fontFamily:"monospace",fontWeight:700,color:T.purple,fontSize:15}}>{inr(effectiveNPS)}</div>
-              {npsAdhoc>0&&<div style={{fontSize:10,color:T.green,marginTop:2}}>incl. {inr(npsAdhoc)} adhoc</div>}
-            </div>
-            <div style={{background:T.surf,borderRadius:10,padding:"10px 14px"}}>
-              <div style={{fontSize:10,color:T.muted,marginBottom:4}}>Monthly contribution</div>
-              <div style={{fontFamily:"monospace",fontWeight:700,fontSize:15}}>₹52,461</div>
-              <div style={{fontSize:10,color:T.muted,marginTop:2}}>auto from salary</div>
-            </div>
-            <div style={{background:T.surf,borderRadius:10,padding:"10px 14px"}}>
-              <div style={{fontSize:10,color:T.muted,marginBottom:4}}>Years to retirement</div>
-              <div style={{fontFamily:"monospace",fontWeight:700,fontSize:15}}>{yrsToRetire} yrs</div>
-              <div style={{fontSize:10,color:T.muted,marginTop:2}}>at 10% p.a. expected</div>
-            </div>
-          </div>
-
-          {/* Projected corpus + breakdown */}
-          <div style={{background:`rgba(149,117,205,0.08)`,borderRadius:12,padding:"14px 16px",
-            border:`1px solid rgba(149,117,205,0.2)`,marginBottom:14}}>
-            <div style={{fontSize:11,color:T.muted,marginBottom:6}}>Projected NPS corpus at age {retireAge}</div>
-            <div style={{fontSize:28,fontWeight:800,fontFamily:"monospace",color:T.purple}}>
-              {inr(npsProjCorpus)}
-            </div>
-            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginTop:14}}>
-              <div>
-                <div style={{fontSize:10,color:T.muted,marginBottom:3}}>60% Lump sum (tax-free)</div>
-                <div style={{fontFamily:"monospace",fontWeight:700,color:T.green,fontSize:15}}>
-                  {inr(npsLumpSum)}
-                </div>
-              </div>
-              <div>
-                <div style={{fontSize:10,color:T.muted,marginBottom:3}}>40% Annuity → monthly pension</div>
-                <div style={{fontFamily:"monospace",fontWeight:700,color:T.blue,fontSize:15}}>
-                  {inr(npsPension)}/mo
-                </div>
-                <div style={{fontSize:10,color:T.dim}}>at ~6% annuity rate</div>
-              </div>
-            </div>
-          </div>
-
-          {/* Scenarios */}
-          <div style={{fontSize:10,color:T.muted,textTransform:"uppercase",letterSpacing:"0.1em",marginBottom:8}}>
-            Scenarios
-          </div>
-          <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:8,marginBottom:12}}>
-            {[{r:8,label:"Conservative"},{r:10,label:"Base"},{r:12,label:"Optimistic"}].map(({r:rate,label})=>{
-              const rr=rate/100/12, nn=yrsToRetire*12;
-              const proj = effectiveNPS*Math.pow(1+rate/100,yrsToRetire)
-                         + NPS_MONTHLY*(Math.pow(1+rr,nn)-1)/rr*(1+rr);
-              return (
-                <div key={rate} style={{background:T.surf,borderRadius:8,padding:"10px 12px",
-                  border:rate===10?`1px solid ${T.purple}`:"none"}}>
-                  <div style={{fontSize:10,color:T.muted,marginBottom:4}}>{label} ({rate}%)</div>
-                  <div style={{fontFamily:"monospace",fontWeight:700,fontSize:13,
-                    color:rate===10?T.purple:T.text}}>{inr(proj)}</div>
-                  <div style={{fontSize:10,color:T.muted,marginTop:2}}>
-                    ~{inr(proj*0.4*0.06/12)}/mo pension
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-
-          <div style={{fontSize:11,color:T.dim,lineHeight:1.6,borderTop:`1px solid ${T.border}`,paddingTop:10}}>
-            💡 Any extra NPS contribution you log in Inflows automatically updates this projection.
-            Update your NPS balance quarterly from your CRA statement to keep the base accurate.
-          </div>
-        </Card>
-      )}
 
       {/* ── Deployment Pool ─────────────────────────────────────────────── */}
       <Card accent={T.gold} style={{padding:"18px 18px 16px"}}>

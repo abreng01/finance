@@ -27,5 +27,12 @@ export const SEED = {
   monthlyInflowTarget:  252000,
   usdInr:               83.50,
   lastUpdated:          null,
+  fireSettings: {
+    target: 100000000,
+    currentAge: 38,
+    fireAge: 50,
+    expectedReturn: 10,
+  },
+  mfLots:               {},
   seedVersion:          3,
 };

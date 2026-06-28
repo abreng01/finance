@@ -23,10 +23,10 @@ export const NAV_ITEMS = [
   { id:'us',        icon:'🇺🇸', label:'US Portfolio' },
   { id:'india',     icon:'🇮🇳', label:'India'        },
   { id:'goals',     icon:'🎯', label:'Goals'        },
-  { id:'analytics', icon:'📊', label:'Analytics'   },
   { id:'inflows',   icon:'💰', label:'Inflows'     },
   { id:'emergency', icon:'🛡️', label:'Emergency'   },
   { id:'tax',       icon:'📋', label:'Tax'         },
+  { id:'analytics', icon:'📊', label:'Analytics'   },
 ];
 
 // ── API Keys ─────────────────────────────────────────────────────────────────

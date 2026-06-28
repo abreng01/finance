@@ -609,6 +609,7 @@ export default function IndiaPage({ data, setData }) {
                 const isPPF = h.type==="PPF";
                 const isNPS = h.type==="NPS";
                 return (
+                  <>
                   <tr key={h.id} style={{borderBottom:idx<other.length-1?`1px solid ${T.border}`:"none"}}
                     onMouseEnter={e=>e.currentTarget.style.background="rgba(91,141,239,0.04)"}
                     onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
@@ -666,7 +667,8 @@ export default function IndiaPage({ data, setData }) {
                       </div>
                     </td>
                   </tr>
-                  {isPPF&&showPPF&&<PPFDetailRow h={h}/>}
+                  {isPPF&&showPPF&&<PPFDetailRow key={h.id+"ppf"} h={h}/>}
+                </>
                 );
               })}</tbody>
             </table>

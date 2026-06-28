@@ -36,7 +36,7 @@ export default function InflowsPage({ data, setData }) {
   const [showAdd, setShowAdd] = useState(false);
   const [editId,  setEditId]  = useState(null);
   const [delId,   setDelId]   = useState(null);
-  const [form,    setForm]    = useState({ date:new Date().toISOString().slice(0,10), portfolio:"india", holdingId:"", amount:"", note:"" });
+  const [form,    setForm]    = useState({ date:new Date().toISOString().slice(0,10), portfolio:"india", holdingId:"", amount:"", units:"", note:"" });
   const upd = p => setData(d=>({...d,...p}));
 
   const submitForm = () => {
@@ -45,15 +45,32 @@ export default function InflowsPage({ data, setData }) {
     const isUS  = form.portfolio==="us";
     const hold  = (isUS?usHoldings:indiaHoldings).find(h=>h.id===form.holdingId);
     const amtINR= isUS ? amt*usdInr : amt;
+    const units = parseFloat(form.units)||0;
+    const lotNav= units>0 ? amt/units : 0;
     const entry = { id:editId||"t"+Date.now(), date:form.date, portfolio:form.portfolio,
       holdingId:form.holdingId, holdingName:isUS?`${hold?.ticker} — ${hold?.name}`:hold?.name||"",
-      owner:hold?.owner||"abilash", amount:amt, currency:isUS?"USD":"INR", amountINR:amtINR, note:form.note };
-    upd({transactions: editId ? transactions.map(t=>t.id===editId?entry:t) : [...transactions,entry]});
+      owner:hold?.owner||"abilash", amount:amt, currency:isUS?"USD":"INR", amountINR:amtINR,
+      units:units>0?units:undefined, nav:lotNav>0?lotNav:undefined, note:form.note };
+    const updatedTxns = editId ? transactions.map(t=>t.id===editId?entry:t) : [...transactions,entry];
+
+    // If India MF with units — update holding and add lot to mfLots
+    if(!isUS && hold?.type==="MF" && units>0 && !editId) {
+      const newUnits    = hold.units + units;
+      const newInvested = hold.invested + amt;
+      const updHoldings = indiaHoldings.map(h=>h.id===form.holdingId
+        ?{...h, units:parseFloat(newUnits.toFixed(4)), invested:parseFloat(newInvested.toFixed(2))}:h);
+      const existingLots= (data.mfLots||{})[form.holdingId]||[];
+      const newLot      = { date:form.date, amount:parseFloat(amt.toFixed(2)), nav:parseFloat(lotNav.toFixed(4)), units:parseFloat(units.toFixed(4)) };
+      const updLots     = {...(data.mfLots||{}), [form.holdingId]:[...existingLots, newLot]};
+      upd({transactions:updatedTxns, indiaHoldings:updHoldings, mfLots:updLots});
+    } else {
+      upd({transactions:updatedTxns});
+    }
     setShowAdd(false); setEditId(null);
   };
 
-  const openAdd  = () => { setEditId(null); setForm({date:new Date().toISOString().slice(0,10),portfolio:"india",holdingId:"",amount:"",note:""}); setShowAdd(true); };
-  const openEdit = t  => { setEditId(t.id); setForm({date:t.date,portfolio:t.portfolio,holdingId:t.holdingId,amount:String(t.amount),note:t.note||""}); setShowAdd(true); };
+  const openAdd  = () => { setEditId(null); setForm({date:new Date().toISOString().slice(0,10),portfolio:"india",holdingId:"",amount:"",units:"",note:""}); setShowAdd(true); };
+  const openEdit = t  => { setEditId(t.id); setForm({date:t.date,portfolio:t.portfolio,holdingId:t.holdingId,amount:String(t.amount),units:String(t.units||""),note:t.note||""}); setShowAdd(true); };
 
   // Derived
   const now          = new Date();
@@ -350,6 +367,31 @@ export default function InflowsPage({ data, setData }) {
                 );
               })()}
             </div>
+
+            {/* Units field — India MF only */}
+            {form.portfolio==="india"&&(()=>{
+              const holding=indiaHoldings.find(h=>h.id===form.holdingId);
+              if(holding?.type!=="MF") return null;
+              const nav=parseFloat(form.units)>0&&parseFloat(form.amount)>0
+                ?(parseFloat(form.amount)/parseFloat(form.units)).toFixed(4):null;
+              return (
+                <div>
+                  <div style={{fontSize:11,color:T.muted,marginBottom:6,textTransform:"uppercase",letterSpacing:"0.08em"}}>
+                    Units Allotted *
+                  </div>
+                  <input type="text" inputMode="decimal" value={form.units}
+                    placeholder="e.g. 9.451 (from Zerodha Coin)"
+                    onChange={e=>setForm(p=>({...p,units:e.target.value}))}
+                    style={{width:"100%",background:T.card,border:`1px solid ${T.border}`,borderRadius:8,
+                      padding:"10px 13px",color:T.text,fontSize:14,fontFamily:"monospace",outline:"none",boxSizing:"border-box"}}/>
+                  {nav&&(
+                    <div style={{fontSize:11,color:T.muted,marginTop:4}}>
+                      NAV = ₹{nav} · Lot will be added to Tax Tracker 📋
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
 
             <Inp label="Note (optional)" value={form.note} placeholder="e.g. Monthly SIP, Top-up" onChange={e=>setForm(p=>({...p,note:e.target.value}))}/>
 

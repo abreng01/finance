@@ -26,7 +26,6 @@ export const NAV_ITEMS = [
   { id:'analytics', icon:'📊', label:'Analytics'   },
   { id:'inflows',   icon:'💰', label:'Inflows'     },
   { id:'emergency', icon:'🛡️', label:'Emergency'   },
-  { id:'fire',      icon:'🔥', label:'FIRE'        },
   { id:'tax',       icon:'📋', label:'Tax'         },
 ];
 

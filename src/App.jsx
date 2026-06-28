@@ -11,7 +11,6 @@ import Goals      from './components/Goals';
 import Analytics  from './components/Analytics';
 import Inflows    from './components/Inflows';
 import Emergency  from './components/Emergency';
-import Fire       from './components/Fire';
 import Tax        from './components/Tax';
 
 // ── Migrate stored data to latest SEED version ────────────────────────────────
@@ -154,7 +153,6 @@ export default function App() {
         {page==='analytics' && <Analytics data={data}/>}
         {page==='inflows'   && <Inflows   data={data} setData={setData}/>}
         {page==='emergency' && <Emergency data={data} setData={setData}/>}
-        {page==='fire'      && <Fire      data={data} setData={setData}/>}
         {page==='tax'       && <Tax       data={data} setData={setData}/>}
       </div>
 

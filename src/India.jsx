@@ -1,18 +1,101 @@
 import { useState, useEffect, useRef } from 'react';
 import { T, OWNERS, PPF_ANNUAL_LIMIT } from '../config';
 import { inr, usd, pct, gc, own, fmtDate, fmtDateTime, daysLeft, timeLeft, getIndianFY } from '../helpers';
+import NPSProjection from './NPSProjection';
 import { OwnerBadge, Card, Btn, ProgressBar, SectionLabel, StatCard, Modal, Inp, TypeBtn, OwnerBtns, DelConfirm } from './shared';
 
 // ══════════════════════════════════════════════════════════════════════════════
 // INDIA PAGE  — with live AMFI NAV fetch + scheme code search
 // ══════════════════════════════════════════════════════════════════════════════
+// ── PPF Detail Row — shown when PPF row is expanded ──────────────────────────
+function PPFDetailRow({ h }) {
+  const mat   = h.maturityDate || "2038-04-01";
+  const start = h.startDate    || "2023-03-01";
+  const bal   = h.currentValue || 0;
+  const now2  = new Date();
+  const matD  = new Date(mat);
+  const yrsL  = Math.max(0, (matD - now2)  / (365.25 * 86400000));
+  const yrsE  = Math.max(0, (now2 - new Date(start)) / (365.25 * 86400000));
+  const yrsT  = (matD - new Date(start)) / (365.25 * 86400000);
+  const prog  = Math.min(100, (yrsE / yrsT) * 100);
+  const dLeft = Math.max(0, Math.floor((matD - now2) / 86400000));
+  const avgC  = 50000;
+
+  function ppfFV(b, contrib, yrs, rate) {
+    const r = rate / 100;
+    return b * Math.pow(1+r, yrs) + contrib * ((Math.pow(1+r, yrs)-1)/r) * (1+r);
+  }
+
+  const p71  = ppfFV(bal, avgC, yrsL, 7.1);
+  const p65  = ppfFV(bal, avgC, yrsL, 6.5);
+  const p75  = ppfFV(bal, avgC, yrsL, 7.5);
+  const ext5 = ppfFV(p71, avgC, 5,   7.1);
+  const ext10= ppfFV(p71, avgC, 10,  7.1);
+
+  const fmtD = d => new Date(d).toLocaleDateString("en-IN",{day:"2-digit",month:"short",year:"numeric"});
+
+  return (
+    <tr>
+      <td colSpan={6} style={{padding:"0 0 12px", background:`${T.gold}06`}}>
+        <div style={{padding:"14px 16px", display:"flex", flexDirection:"column", gap:12}}>
+
+          {/* Maturity progress */}
+          <div>
+            <div style={{display:"flex",justifyContent:"space-between",fontSize:11,color:T.muted,marginBottom:5}}>
+              <span>Started {fmtD(start)}</span>
+              <span style={{color:T.gold,fontWeight:600}}>
+                Matures {fmtD(mat)} · {Math.floor(dLeft/365)}y {Math.floor((dLeft%365)/30)}m left
+              </span>
+            </div>
+            <div style={{background:T.surf,borderRadius:6,height:8,overflow:"hidden"}}>
+              <div style={{width:`${prog}%`,height:"100%",background:T.gold,borderRadius:6}}/>
+            </div>
+            <div style={{fontSize:10,color:T.dim,marginTop:3}}>{prog.toFixed(0)}% of 15-year lock-in elapsed</div>
+          </div>
+
+          {/* Projection */}
+          <div style={{background:`rgba(240,180,41,0.06)`,border:`1px solid rgba(240,180,41,0.15)`,borderRadius:10,padding:"12px 14px"}}>
+            <div style={{fontSize:10,color:T.muted,marginBottom:8}}>
+              Projected maturity value · ₹50K/yr assumed contributions
+            </div>
+            <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:8}}>
+              {[{r:6.5,v:p65,l:"If rate drops"},{r:7.1,v:p71,l:"Current (7.1%)",a:true},{r:7.5,v:p75,l:"If rate rises"}].map(s=>(
+                <div key={s.r} style={{background:T.card,borderRadius:8,padding:"8px 10px",
+                  border:s.a?`1px solid ${T.gold}`:`1px solid transparent`}}>
+                  <div style={{fontSize:9,color:T.muted,marginBottom:3}}>{s.l}</div>
+                  <div style={{fontFamily:"monospace",fontWeight:700,fontSize:13,color:s.a?T.gold:T.text}}>{inr(s.v)}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Extension options */}
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
+            {[{l:"Extend +5 yrs (→2043)",v:ext5},{l:"Extend +10 yrs (→2048)",v:ext10}].map(e=>(
+              <div key={e.l} style={{background:T.surf,borderRadius:8,padding:"10px 12px"}}>
+                <div style={{fontSize:10,color:T.muted,marginBottom:3}}>{e.l}</div>
+                <div style={{fontFamily:"monospace",fontWeight:700,fontSize:13}}>{inr(e.v)}</div>
+              </div>
+            ))}
+          </div>
+
+          <div style={{fontSize:10,color:T.dim,lineHeight:1.6}}>
+            💡 EEE tax status — contributions, interest and maturity all tax-free.
+            Partial withdrawal allowed after 7 years from account opening.
+          </div>
+        </div>
+      </td>
+    </tr>
+  );
+}
+
 export default function IndiaPage({ data, setData }) {
   const { indiaHoldings } = data;
   const [ownerF,      setOwnerF]     = useState("all");
   const [showEdit,    setShowEdit]   = useState(false);
   const [editId,      setEditId]     = useState(null);
+  const [showPPF,        setShowPPF]        = useState(false);
   const [showTopUp,      setShowTopUp]     = useState(false);
-  const [showNPSProj,    setShowNPSProj]   = useState(false);
   const [showDeploy,  setShowDeploy] = useState(false);
   const [topUpForm,   setTopUpForm]  = useState({owner:"abilash",amount:"",date:new Date().toISOString().slice(0,10),note:""});
   const [deployForm,  setDeployForm] = useState({owner:"abilash",amount:"",fundId:"",date:new Date().toISOString().slice(0,10),note:""});
@@ -89,35 +172,6 @@ export default function IndiaPage({ data, setData }) {
   const npsValue    = npsHolding?.currentValue||0;
   const ppfValue    = ppfHolding?.currentValue||0;
 
-  // ── NPS Projection ─────────────────────────────────────────────────────────
-  const NPS_MONTHLY   = 52461;
-  const NPS_RATE      = 10;   // % p.a. expected return
-  const currentAge    = data.fireSettings?.currentAge || 38;
-  const retireAge     = 60;
-  const yrsToRetire   = retireAge - currentAge;
-  // Adhoc NPS contributions logged in Inflows (on top of auto ₹52,461)
-  const npsAdhoc      = (data.transactions||[])
-    .filter(t => t.holdingId === (npsHolding?.id||'i9') && (t.amountINR||0) > 0)
-    .reduce((s,t) => s + (t.amountINR||0), 0);
-  const effectiveNPS  = npsValue + npsAdhoc;
-  const npsR          = NPS_RATE/100/12;
-  const npsN          = yrsToRetire * 12;
-  const npsProjCorpus = effectiveNPS * Math.pow(1+NPS_RATE/100, yrsToRetire)
-                      + NPS_MONTHLY * (Math.pow(1+npsR,npsN)-1)/npsR*(1+npsR);
-  const npsLumpSum    = npsProjCorpus * 0.60;  // tax-free at 60
-  const npsAnnuity    = npsProjCorpus * 0.40;  // must buy annuity
-  const npsPension    = npsAnnuity * 0.06 / 12; // ~6% annuity rate
-  const npsScenarios  = [
-    {rate:8,  label:"Conservative"},
-    {rate:10, label:"Base"},
-    {rate:12, label:"Optimistic"},
-  ].map(s => {
-    const sr   = s.rate/100/12;
-    const sn   = yrsToRetire * 12;
-    const proj = effectiveNPS * Math.pow(1+s.rate/100, yrsToRetire)
-               + NPS_MONTHLY  * (Math.pow(1+sr,sn)-1)/sr*(1+sr);
-    return {...s, proj, pension: proj*0.4*0.06/12};
-  });
   // MF invested = the amount deployed into mutual funds
   const mfInv       = indiaHoldings.filter(h=>h.type==="MF").reduce((s,h)=>s+(h.invested||0),0);
   // Combined MF+PPF invested for card 2
@@ -328,25 +382,13 @@ export default function IndiaPage({ data, setData }) {
           <div style={{fontSize:10,color:T.muted,marginTop:4,lineHeight:1.5}}>
             ₹52,461/mo auto · Locked until retirement
           </div>
-          {npsAdhoc>0&&(
-            <div style={{fontSize:10,color:T.green,marginTop:2}}>
-              +{inr(npsAdhoc)} adhoc logged
-            </div>
-          )}
-          <div style={{display:"flex",gap:10,marginTop:6,flexWrap:"wrap"}}>
-            {npsHolding&&(
-              <button onClick={()=>openEdit(npsHolding)}
-                style={{background:"none",border:"none",color:T.blue,cursor:"pointer",fontSize:11,
-                  fontWeight:600,padding:0}}>
-                ✏️ Update balance
-              </button>
-            )}
-            <button onClick={()=>setShowNPSProj(p=>!p)}
-              style={{background:"none",border:"none",color:T.purple,cursor:"pointer",fontSize:11,
-                fontWeight:600,padding:0}}>
-              {showNPSProj?"▲ Hide":"📈 Projection"}
+          {npsHolding&&(
+            <button onClick={()=>openEdit(npsHolding)}
+              style={{background:"none",border:"none",color:T.blue,cursor:"pointer",fontSize:11,
+                fontWeight:600,padding:"4px 0 0",display:"block"}}>
+              ✏️ Update balance
             </button>
-          </div>
+          )}
         </Card>
 
         {/* Card 2: MF + PPF Invested */}
@@ -427,83 +469,16 @@ export default function IndiaPage({ data, setData }) {
 
 
 
-      {/* ── NPS Projection Panel ─────────────────────────────────────────── */}
-      {showNPSProj&&(
-        <Card accent={T.purple} style={{padding:"18px 20px"}}>
-          <div style={{fontSize:10,fontWeight:700,color:T.muted,textTransform:"uppercase",
-            letterSpacing:"0.12em",marginBottom:14}}>
-            📈 NPS Corpus Projection — Age {currentAge} → {retireAge}
-          </div>
 
-          {/* Key numbers */}
-          <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(140px,1fr))",gap:10,marginBottom:16}}>
-            <div style={{background:T.surf,borderRadius:10,padding:"10px 14px"}}>
-              <div style={{fontSize:10,color:T.muted,marginBottom:4}}>Base corpus today</div>
-              <div style={{fontFamily:"monospace",fontWeight:700,color:T.purple,fontSize:15}}>{inr(effectiveNPS)}</div>
-              {npsAdhoc>0&&<div style={{fontSize:10,color:T.green,marginTop:2}}>incl. {inr(npsAdhoc)} adhoc</div>}
-            </div>
-            <div style={{background:T.surf,borderRadius:10,padding:"10px 14px"}}>
-              <div style={{fontSize:10,color:T.muted,marginBottom:4}}>Monthly contribution</div>
-              <div style={{fontFamily:"monospace",fontWeight:700,fontSize:15}}>₹52,461</div>
-              <div style={{fontSize:10,color:T.muted,marginTop:2}}>auto from salary</div>
-            </div>
-            <div style={{background:T.surf,borderRadius:10,padding:"10px 14px"}}>
-              <div style={{fontSize:10,color:T.muted,marginBottom:4}}>Years to retirement</div>
-              <div style={{fontFamily:"monospace",fontWeight:700,fontSize:15}}>{yrsToRetire} yrs</div>
-              <div style={{fontSize:10,color:T.muted,marginTop:2}}>at 10% p.a. expected</div>
-            </div>
-          </div>
+      {/* ── NPS Projection (self-contained component) ─────────────────────── */}
+      <NPSProjection
+        npsValue={npsValue}
+        npsHoldingId={npsHolding?.id}
+        transactions={data.transactions}
+        currentAge={data.fireSettings?.currentAge || 38}
+      />
 
-          {/* Projected corpus + breakdown */}
-          <div style={{background:`rgba(149,117,205,0.08)`,borderRadius:12,padding:"14px 16px",
-            border:`1px solid rgba(149,117,205,0.2)`,marginBottom:14}}>
-            <div style={{fontSize:11,color:T.muted,marginBottom:6}}>Projected NPS corpus at age {retireAge}</div>
-            <div style={{fontSize:28,fontWeight:800,fontFamily:"monospace",color:T.purple}}>
-              {inr(npsProjCorpus)}
-            </div>
-            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginTop:14}}>
-              <div>
-                <div style={{fontSize:10,color:T.muted,marginBottom:3}}>60% Lump sum (tax-free)</div>
-                <div style={{fontFamily:"monospace",fontWeight:700,color:T.green,fontSize:15}}>
-                  {inr(npsLumpSum)}
-                </div>
-              </div>
-              <div>
-                <div style={{fontSize:10,color:T.muted,marginBottom:3}}>40% Annuity → monthly pension</div>
-                <div style={{fontFamily:"monospace",fontWeight:700,color:T.blue,fontSize:15}}>
-                  {inr(npsPension)}/mo
-                </div>
-                <div style={{fontSize:10,color:T.dim}}>at ~6% annuity rate</div>
-              </div>
-            </div>
-          </div>
-
-          {/* Scenarios */}
-          <div style={{fontSize:10,color:T.muted,textTransform:"uppercase",letterSpacing:"0.1em",marginBottom:8}}>
-            Scenarios
-          </div>
-          <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:8,marginBottom:12}}>
-            {npsScenarios.map(s=>(
-              <div key={s.rate} style={{background:T.surf,borderRadius:8,padding:"10px 12px",
-                border:s.rate===10?`1px solid ${T.purple}`:"none"}}>
-                <div style={{fontSize:10,color:T.muted,marginBottom:4}}>{s.label} ({s.rate}%)</div>
-                <div style={{fontFamily:"monospace",fontWeight:700,fontSize:13,
-                  color:s.rate===10?T.purple:T.text}}>{inr(s.proj)}</div>
-                <div style={{fontSize:10,color:T.muted,marginTop:2}}>
-                  ~{inr(s.pension)}/mo pension
-                </div>
-              </div>
-            ))}
-          </div>
-
-          <div style={{fontSize:11,color:T.dim,lineHeight:1.6,borderTop:`1px solid ${T.border}`,paddingTop:10}}>
-            💡 Any extra NPS contribution you log in Inflows automatically updates this projection.
-            Update your NPS balance quarterly from your CRA statement to keep the base accurate.
-          </div>
-        </Card>
-      )}
-
-      {/* ── Deployment Pool ─────────────────────────────────────────────── */}
+{/* ── Deployment Pool ─────────────────────────────────────────────── */}
       <Card accent={T.gold} style={{padding:"18px 18px 16px"}}>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:14,flexWrap:"wrap",gap:8}}>
           <div>
@@ -638,9 +613,13 @@ export default function IndiaPage({ data, setData }) {
                     onMouseEnter={e=>e.currentTarget.style.background="rgba(91,141,239,0.04)"}
                     onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
                     <td style={{padding:"12px 13px"}}><OwnerBadge id={h.owner}/></td>
-                    <td style={{padding:"12px 13px"}}>
-                      <div style={{fontWeight:600}}>{h.name}</div>
-                      {isPPF&&<div style={{fontSize:10,color:T.muted,marginTop:2}}>Government guaranteed · Lock-in till 60</div>}
+                    <td style={{padding:"12px 13px",cursor:isPPF?"pointer":"default"}}
+                      onClick={isPPF?()=>setShowPPF(p=>!p):undefined}>
+                      <div style={{display:"flex",alignItems:"center",gap:6}}>
+                        <span style={{fontWeight:600}}>{h.name}</span>
+                        {isPPF&&<span style={{fontSize:10,color:T.gold}}>{showPPF?"▲":"▼ details"}</span>}
+                      </div>
+                      {isPPF&&<div style={{fontSize:10,color:T.muted,marginTop:2}}>Govt guaranteed · EEE tax-free · 7.1% p.a.</div>}
                       {isNPS&&<div style={{fontSize:10,color:T.muted,marginTop:2}}>Market-linked · Returns vary</div>}
                     </td>
                     <td style={{padding:"12px 13px"}}>
@@ -687,6 +666,7 @@ export default function IndiaPage({ data, setData }) {
                       </div>
                     </td>
                   </tr>
+                  {isPPF&&showPPF&&<PPFDetailRow h={h}/>}
                 );
               })}</tbody>
             </table>

@@ -12,6 +12,7 @@ export default function IndiaPage({ data, setData }) {
   const [ownerF,      setOwnerF]     = useState("all");
   const [showEdit,    setShowEdit]   = useState(false);
   const [editId,      setEditId]     = useState(null);
+  const [showPPF,        setShowPPF]        = useState(false);
   const [showTopUp,      setShowTopUp]     = useState(false);
   const [showDeploy,  setShowDeploy] = useState(false);
   const [topUpForm,   setTopUpForm]  = useState({owner:"abilash",amount:"",date:new Date().toISOString().slice(0,10),note:""});
@@ -395,7 +396,7 @@ export default function IndiaPage({ data, setData }) {
         currentAge={data.fireSettings?.currentAge || 38}
       />
 
-      {/* ── Deployment Pool ─────────────────────────────────────────────── */}
+{/* ── Deployment Pool ─────────────────────────────────────────────── */}
       <Card accent={T.gold} style={{padding:"18px 18px 16px"}}>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:14,flexWrap:"wrap",gap:8}}>
           <div>
@@ -530,9 +531,13 @@ export default function IndiaPage({ data, setData }) {
                     onMouseEnter={e=>e.currentTarget.style.background="rgba(91,141,239,0.04)"}
                     onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
                     <td style={{padding:"12px 13px"}}><OwnerBadge id={h.owner}/></td>
-                    <td style={{padding:"12px 13px"}}>
-                      <div style={{fontWeight:600}}>{h.name}</div>
-                      {isPPF&&<div style={{fontSize:10,color:T.muted,marginTop:2}}>Government guaranteed · Lock-in till 60</div>}
+                    <td style={{padding:"12px 13px",cursor:isPPF?"pointer":"default"}}
+                      onClick={isPPF?()=>setShowPPF(p=>!p):undefined}>
+                      <div style={{display:"flex",alignItems:"center",gap:6}}>
+                        <span style={{fontWeight:600}}>{h.name}</span>
+                        {isPPF&&<span style={{fontSize:10,color:T.gold}}>{showPPF?"▲":"▼ details"}</span>}
+                      </div>
+                      {isPPF&&<div style={{fontSize:10,color:T.muted,marginTop:2}}>Govt guaranteed · EEE tax-free · 7.1% p.a.</div>}
                       {isNPS&&<div style={{fontSize:10,color:T.muted,marginTop:2}}>Market-linked · Returns vary</div>}
                     </td>
                     <td style={{padding:"12px 13px"}}>
@@ -579,6 +584,82 @@ export default function IndiaPage({ data, setData }) {
                       </div>
                     </td>
                   </tr>
+                  {isPPF&&showPPF&&(()=>{
+                    const mat   = h.maturityDate||"2038-04-01";
+                    const start = h.startDate||"2023-03-01";
+                    const bal   = h.currentValue||0;
+                    const now2  = new Date();
+                    const matD  = new Date(mat);
+                    const yrsL  = Math.max(0,(matD-now2)/(365.25*86400000));
+                    const yrsE  = Math.max(0,(now2-new Date(start))/(365.25*86400000));
+                    const yrsT  = (matD-new Date(start))/(365.25*86400000);
+                    const prog  = Math.min(100,(yrsE/yrsT)*100);
+                    const dLeft = Math.max(0,Math.floor((matD-now2)/86400000));
+                    const avgC  = 50000; // default yearly contribution estimate
+                    function ppfFV(bal2,contrib,yrs,rate){
+                      const r=rate/100;
+                      return bal2*Math.pow(1+r,yrs)+contrib*((Math.pow(1+r,yrs)-1)/r)*(1+r);
+                    }
+                    const p71  = ppfFV(bal,avgC,yrsL,7.1);
+                    const p65  = ppfFV(bal,avgC,yrsL,6.5);
+                    const p75  = ppfFV(bal,avgC,yrsL,7.5);
+                    const ext5 = ppfFV(p71,avgC,5,7.1);
+                    const ext10= ppfFV(p71,avgC,10,7.1);
+                    return (
+                      <tr>
+                        <td colSpan={6} style={{padding:"0 0 12px",background:`${T.gold}06`}}>
+                          <div style={{padding:"14px 16px",display:"flex",flexDirection:"column",gap:12}}>
+
+                            {/* Maturity progress */}
+                            <div>
+                              <div style={{display:"flex",justifyContent:"space-between",fontSize:11,color:T.muted,marginBottom:5}}>
+                                <span>Started {new Date(start).toLocaleDateString("en-IN",{day:"2-digit",month:"short",year:"numeric"})}</span>
+                                <span style={{color:T.gold,fontWeight:600}}>
+                                  Matures {new Date(mat).toLocaleDateString("en-IN",{day:"2-digit",month:"short",year:"numeric"})}
+                                  {" · "}{Math.floor(dLeft/365)}y {Math.floor((dLeft%365)/30)}m left
+                                </span>
+                              </div>
+                              <div style={{background:T.surf,borderRadius:6,height:8,overflow:"hidden"}}>
+                                <div style={{width:`${prog}%`,height:"100%",background:T.gold,borderRadius:6}}/>
+                              </div>
+                              <div style={{fontSize:10,color:T.dim,marginTop:3}}>{prog.toFixed(0)}% of 15-year lock-in elapsed</div>
+                            </div>
+
+                            {/* Projection */}
+                            <div style={{background:`rgba(240,180,41,0.06)`,border:`1px solid rgba(240,180,41,0.15)`,borderRadius:10,padding:"12px 14px"}}>
+                              <div style={{fontSize:10,color:T.muted,marginBottom:8}}>
+                                Projected maturity value · assuming ₹50K/yr contributions
+                              </div>
+                              <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:8}}>
+                                {[{r:6.5,v:p65,l:"If rate drops"},{r:7.1,v:p71,l:"Current (7.1%)",a:true},{r:7.5,v:p75,l:"If rate rises"}].map(s=>(
+                                  <div key={s.r} style={{background:T.card,borderRadius:8,padding:"8px 10px",
+                                    border:s.a?`1px solid ${T.gold}`:`1px solid transparent`}}>
+                                    <div style={{fontSize:9,color:T.muted,marginBottom:3}}>{s.l}</div>
+                                    <div style={{fontFamily:"monospace",fontWeight:700,fontSize:13,color:s.a?T.gold:T.text}}>{inr(s.v)}</div>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+
+                            {/* Extension */}
+                            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
+                              {[{l:"Extend +5 yrs (→2043)",v:ext5},{l:"Extend +10 yrs (→2048)",v:ext10}].map(e=>(
+                                <div key={e.l} style={{background:T.surf,borderRadius:8,padding:"10px 12px"}}>
+                                  <div style={{fontSize:10,color:T.muted,marginBottom:3}}>{e.l}</div>
+                                  <div style={{fontFamily:"monospace",fontWeight:700,fontSize:13}}>{inr(e.v)}</div>
+                                </div>
+                              ))}
+                            </div>
+
+                            <div style={{fontSize:10,color:T.dim,lineHeight:1.6}}>
+                              💡 EEE tax status — contributions, interest and maturity all tax-free.
+                              Partial withdrawal allowed after 7 years from opening.
+                            </div>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })()}
                 );
               })}</tbody>
             </table>

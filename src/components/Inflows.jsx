@@ -63,6 +63,11 @@ export default function InflowsPage({ data, setData }) {
       const newLot      = { date:form.date, amount:parseFloat(amt.toFixed(2)), nav:parseFloat(lotNav.toFixed(4)), units:parseFloat(units.toFixed(4)) };
       const updLots     = {...(data.mfLots||{}), [form.holdingId]:[...existingLots, newLot]};
       upd({transactions:updatedTxns, indiaHoldings:updHoldings, mfLots:updLots});
+    } else if(!isUS && hold?.type==="NPS" && !editId) {
+      // NPS — add contribution to currentValue so India tab updates immediately
+      const updHoldings = indiaHoldings.map(h=>h.id===form.holdingId
+        ?{...h, currentValue:(h.currentValue||0)+amt}:h);
+      upd({transactions:updatedTxns, indiaHoldings:updHoldings});
     } else {
       upd({transactions:updatedTxns});
     }

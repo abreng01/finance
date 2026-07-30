@@ -103,7 +103,8 @@ export default function InflowsPage({ data, setData }) {
   // Bar chart — last 12 months
   const barData = Array.from({length:12},(_,i)=>{
     const d = new Date(now.getFullYear(), now.getMonth()-11+i, 1);
-    const k = d.toISOString().slice(0,7);
+    // Use local date to avoid UTC timezone shift (fixes IST users seeing wrong month)
+    const k = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
     const label = d.toLocaleDateString("en-IN",{month:"short"});
     return { label, total:Math.round((grouped[k]||[]).reduce((s,t)=>s+(t.amountINR||0),0)), isCurrent:k===thisMonthKey };
   });

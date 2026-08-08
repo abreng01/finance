@@ -222,7 +222,7 @@ export default function TaxPage({ data }) {
   const toggleMonth = m => setOpenMonths(p=>({...p,[m]:!p[m]}));
 
   const mfLots   = data.mfLots||{};
-  const holdings = (data.indiaHoldings||[]).filter(h=>h.type==='MF');
+  const holdings = (data.indiaHoldings||[]).filter(h=>h.type==='MF'||h.type==='ETF');
   const funds    = holdings.map(h=>({...h,lots:(mfLots[h.id]||[])})).filter(f=>f.lots.length>0);
 
   // Portfolio totals

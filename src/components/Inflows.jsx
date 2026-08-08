@@ -54,7 +54,7 @@ export default function InflowsPage({ data, setData }) {
     const updatedTxns = editId ? transactions.map(t=>t.id===editId?entry:t) : [...transactions,entry];
 
     // If India MF with units — update holding and add lot to mfLots
-    if(!isUS && hold?.type==="MF" && units>0 && !editId) {
+    if(!isUS && (hold?.type==="MF"||hold?.type==="ETF") && units>0 && !editId) {
       const newUnits    = hold.units + units;
       const newInvested = hold.invested + amt;
       const updHoldings = indiaHoldings.map(h=>h.id===form.holdingId

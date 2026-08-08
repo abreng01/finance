@@ -151,19 +151,19 @@ export default function IndiaPage({ data, setData }) {
   };
 
   const shown = ownerF==="all" ? indiaHoldings : indiaHoldings.filter(h=>h.owner===ownerF);
-  const mf    = shown.filter(h=>h.type==="MF");
-  const other = shown.filter(h=>h.type!=="MF");
+  const mf    = shown.filter(h=>h.type==="MF"||h.type==="ETF");
+  const other = shown.filter(h=>h.type!=="MF"&&h.type!=="ETF");
 
   // MFs: ONLY use units × currentNav (never stale currentValue from old sessions)
   // Non-MF (PPF/NPS/etc): use currentValue as manually entered
   const getValue = h => {
-    if(h.type==="MF") return (h.units>0 && h.currentNav>0) ? h.units*h.currentNav : 0;
+    if(h.type==="MF"||h.type==="ETF") return (h.units>0 && h.currentNav>0) ? h.units*h.currentNav : 0;
     return h.currentValue||0;
   };
 
   // A holding is considered "valued" only if it has a real current value
   // G/L only makes sense for MFs — PPF has fixed 7.1% return, NPS has no cost basis
-  const isValued = h => h.type==="MF" && h.currentNav>0;
+  const isValued = h => (h.type==="MF"||h.type==="ETF") && h.currentNav>0;
 
   // NPS = retirement (locked). PPF = long-term (15yr lock). Both non-liquid.
   const npsHolding  = indiaHoldings.find(h=>h.type==="NPS");
@@ -173,11 +173,11 @@ export default function IndiaPage({ data, setData }) {
   const ppfValue    = ppfHolding?.currentValue||0;
 
   // MF invested = the amount deployed into mutual funds
-  const mfInv       = indiaHoldings.filter(h=>h.type==="MF").reduce((s,h)=>s+(h.invested||0),0);
+  const mfInv       = indiaHoldings.filter(h=>h.type==="MF"||h.type==="ETF").reduce((s,h)=>s+(h.invested||0),0);
   // Combined MF+PPF invested for card 2
   const mfPpfInv    = mfInv + ppfValue;
   // For G/L: only MFs with actual NAVs
-  const totV = indiaHoldings.filter(h=>h.type==="MF").reduce((s,h)=>s+getValue(h),0);
+  const totV = indiaHoldings.filter(h=>h.type==="MF"||h.type==="ETF").reduce((s,h)=>s+getValue(h),0);
   const totI = mfInv;
   // Only calculate gain/loss for holdings that actually have a current value set
   // Avoids showing misleading losses for funds awaiting NAV entry
@@ -189,7 +189,7 @@ export default function IndiaPage({ data, setData }) {
 
   // ── Auto-fetch NAVs (tries mfapi.in direct + 2 proxies) ─────────────────────
   const fetchNavs = async () => {
-    const mfWithCode = indiaHoldings.filter(h=>h.type==="MF"&&h.schemeCode);
+    const mfWithCode = indiaHoldings.filter(h=>(h.type==="MF"||h.type==="ETF")&&h.schemeCode);
     if(!mfWithCode.length){
       setNavMsg({text:"⚠️ Set scheme codes first via ✏️ → 🔍 Search fund",ok:false});
       return;
@@ -298,7 +298,7 @@ export default function IndiaPage({ data, setData }) {
 
   const submitForm = () => {
     if(!form.name.trim()){setFormErr("Name required");return;}
-    const isMF = form.type==="MF";
+    const isMF = form.type==="MF"||form.type==="ETF";
     const entry={name:form.name.trim(),type:form.type,category:form.category,owner:form.owner,
       units:parseFloat(form.units)||0,invested:parseFloat(form.invested)||0,
       currentValue:parseFloat(form.currentValue)||0,
@@ -336,7 +336,7 @@ export default function IndiaPage({ data, setData }) {
         </td>
         <td style={{padding:"12px 13px"}}>
           <span style={{fontSize:10,fontWeight:600,padding:"2px 8px",borderRadius:20,
-            background:"rgba(91,141,239,0.1)",color:T.blue,border:"1px solid rgba(91,141,239,0.25)"}}>{h.category||h.type}</span>
+            background:h.type==="ETF"?"rgba(0,229,160,0.1)":"rgba(91,141,239,0.1)",color:h.type==="ETF"?T.green:T.blue,border:`1px solid ${h.type==="ETF"?"rgba(0,229,160,0.25)":"rgba(91,141,239,0.25)"}`}}>{h.type==="ETF"?"ETF":h.category||h.type}</span>
         </td>
         <td style={{padding:"12px 13px",textAlign:"right",fontFamily:"monospace",color:T.muted}}>
           {isMF&&h.units>0?h.units.toLocaleString("en-IN",{maximumFractionDigits:3}):"—"}
@@ -582,7 +582,7 @@ export default function IndiaPage({ data, setData }) {
 
       {mf.length>0&&(
         <Card style={{overflow:"hidden"}}>
-          <SectionLabel>Mutual Funds ({mf.length})</SectionLabel>
+          <SectionLabel>Mutual Funds & ETFs ({mf.length})</SectionLabel>
           <div style={{overflowX:"auto"}}>
             <table style={{width:"100%",borderCollapse:"collapse",fontSize:13}}>
               <thead><TH/></thead>
@@ -820,7 +820,7 @@ export default function IndiaPage({ data, setData }) {
             <Inp label="Name *" value={form.name} placeholder="e.g. HDFC Nifty Next 50 Index Fund" onChange={e=>setForm(p=>({...p,name:e.target.value}))}/>
 
             <div><div style={{fontSize:11,color:T.muted,marginBottom:8,textTransform:"uppercase",letterSpacing:"0.08em"}}>Type</div>
-              <TypeBtn options={["MF","PPF","NPS","Stock","FD","Gold"]} value={form.type} onChange={v=>setForm(p=>({...p,type:v}))}/>
+              <TypeBtn options={["MF","ETF","PPF","NPS","Stock","FD","Gold"]} value={form.type} onChange={v=>setForm(p=>({...p,type:v}))}/>
             </div>
 
             <Inp label="Category (optional)" value={form.category} placeholder="e.g. Mid Cap, Index, Debt" onChange={e=>setForm(p=>({...p,category:e.target.value}))}/>

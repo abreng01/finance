@@ -317,7 +317,7 @@ export default function IndiaPage({ data, setData }) {
   );
 
   const Row = ({h}) => {
-    const isMF    = h.type==="MF";
+    const isMF    = h.type==="MF"||h.type==="ETF";
     const curVal  = getValue(h);
     const inv     = h.invested||0;
     const g       = curVal-inv;
@@ -826,7 +826,7 @@ export default function IndiaPage({ data, setData }) {
             <Inp label="Category (optional)" value={form.category} placeholder="e.g. Mid Cap, Index, Debt" onChange={e=>setForm(p=>({...p,category:e.target.value}))}/>
 
             {/* MF-specific fields */}
-            {form.type==="MF"&&(<>
+            {(form.type==="MF"||form.type==="ETF")&&(<>
               <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
                 <Inp label="Units held *"      value={form.units}    placeholder="342.718" onChange={e=>setForm(p=>({...p,units:e.target.value}))}    mono/>
                 <Inp label="Total Invested (₹)"value={form.invested} placeholder="54997"  onChange={e=>setForm(p=>({...p,invested:e.target.value}))} mono/>
@@ -873,7 +873,7 @@ export default function IndiaPage({ data, setData }) {
             </>)}
 
             {/* Non-MF: just current value (PPF/NPS don't need invested tracking) */}
-            {form.type!=="MF"&&(
+            {(form.type!=="MF"&&form.type!=="ETF")&&(
               <div>
                 <Inp label="Current Value (₹)" value={form.currentValue} placeholder="e.g. 312000"
                   onChange={e=>setForm(p=>({...p,currentValue:e.target.value}))} mono/>

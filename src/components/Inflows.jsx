@@ -388,22 +388,23 @@ export default function InflowsPage({ data, setData }) {
             {/* Units field — India MF only */}
             {form.portfolio==="india"&&(()=>{
               const holding=indiaHoldings.find(h=>h.id===form.holdingId);
-              if(holding?.type!=="MF") return null;
-              const nav=parseFloat(form.units)>0&&parseFloat(form.amount)>0
-                ?(parseFloat(form.amount)/parseFloat(form.units)).toFixed(4):null;
+              if(holding?.type!=="MF"&&holding?.type!=="ETF") return null;
+              const isETF = holding.type==="ETF";
+              const price = parseFloat(form.units)>0&&parseFloat(form.amount)>0
+                ?(parseFloat(form.amount)/parseFloat(form.units)).toFixed(isETF?2:4):null;
               return (
                 <div>
                   <div style={{fontSize:11,color:T.muted,marginBottom:6,textTransform:"uppercase",letterSpacing:"0.08em"}}>
-                    Units Allotted *
+                    {isETF?"Shares Bought *":"Units Allotted *"}
                   </div>
                   <input type="text" inputMode="decimal" value={form.units}
-                    placeholder="e.g. 9.451 (from Zerodha Coin)"
+                    placeholder={isETF?"e.g. 43 (from Upstox order)":"e.g. 9.451 (from Zerodha Coin)"}
                     onChange={e=>setForm(p=>({...p,units:e.target.value}))}
                     style={{width:"100%",background:T.card,border:`1px solid ${T.border}`,borderRadius:8,
                       padding:"10px 13px",color:T.text,fontSize:14,fontFamily:"monospace",outline:"none",boxSizing:"border-box"}}/>
-                  {nav&&(
+                  {price&&(
                     <div style={{fontSize:11,color:T.muted,marginTop:4}}>
-                      NAV = ₹{nav} · Lot will be added to Tax Tracker 📋
+                      {isETF?"Price":"NAV"} = ₹{price} · Lot will be added to Tax Tracker 📋
                     </div>
                   )}
                 </div>

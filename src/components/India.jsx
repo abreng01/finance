@@ -430,7 +430,7 @@ export default function IndiaPage({ data, setData }) {
       {/* Per-owner MF breakdown */}
       <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(180px,1fr))",gap:12}}>
         {OWNERS.map(o=>{
-          const ownerMFs = indiaHoldings.filter(h=>h.owner===o.id&&h.type==="MF");
+          const ownerMFs = indiaHoldings.filter(h=>h.owner===o.id&&(h.type==="MF"||h.type==="ETF"));
           if(!ownerMFs.length) return null;
           const oInv = ownerMFs.reduce((s,h)=>s+(h.invested||0),0);
           const oVal = ownerMFs.reduce((s,h)=>s+getValue(h),0);

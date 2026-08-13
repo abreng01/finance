@@ -53,21 +53,53 @@ export default function InflowsPage({ data, setData }) {
       units:units>0?units:undefined, nav:lotNav>0?lotNav:undefined, note:form.note };
     const updatedTxns = editId ? transactions.map(t=>t.id===editId?entry:t) : [...transactions,entry];
 
-    // If India MF with units — update holding and add lot to mfLots
-    if(!isUS && (hold?.type==="MF"||hold?.type==="ETF") && units>0 && !editId) {
-      const newUnits    = hold.units + units;
-      const newInvested = hold.invested + amt;
-      const updHoldings = indiaHoldings.map(h=>h.id===form.holdingId
-        ?{...h, units:parseFloat(newUnits.toFixed(4)), invested:parseFloat(newInvested.toFixed(2))}:h);
-      const existingLots= (data.mfLots||{})[form.holdingId]||[];
+    // Find the old entry being edited (to reverse its effect on holdings/lots)
+    const oldEntry = editId ? transactions.find(t=>t.id===editId) : null;
+
+    let updHoldings = indiaHoldings;
+    let updLots     = data.mfLots || {};
+
+    // ── Reverse old entry's effect if editing ──────────────────────────────
+    if(editId && oldEntry && !isUS) {
+      const oldHold = indiaHoldings.find(h=>h.id===oldEntry.holdingId);
+      if(oldHold?.type==="MF"||oldHold?.type==="ETF") {
+        if(oldEntry.units>0) {
+          updHoldings = updHoldings.map(h=>h.id===oldEntry.holdingId
+            ?{...h, units:parseFloat((h.units-oldEntry.units).toFixed(4)),
+                    invested:parseFloat((h.invested-oldEntry.amount).toFixed(2))}:h);
+          // Remove the matching lot (by date+amount+units — best effort match)
+          const existing = updLots[oldEntry.holdingId]||[];
+          const idx = existing.findIndex(l=>l.date===oldEntry.date && Math.abs(l.amount-oldEntry.amount)<0.01 && Math.abs(l.units-oldEntry.units)<0.0001);
+          if(idx>=0) {
+            const newArr = [...existing];
+            newArr.splice(idx,1);
+            updLots = {...updLots, [oldEntry.holdingId]:newArr};
+          }
+        }
+      } else if(oldHold?.type==="NPS") {
+        updHoldings = updHoldings.map(h=>h.id===oldEntry.holdingId
+          ?{...h, currentValue:(h.currentValue||0)-oldEntry.amount}:h);
+      }
+    }
+
+    // ── Apply new entry's effect ────────────────────────────────────────────
+    if(!isUS && (hold?.type==="MF"||hold?.type==="ETF") && units>0) {
+      const curHold = updHoldings.find(h=>h.id===form.holdingId);
+      updHoldings = updHoldings.map(h=>h.id===form.holdingId
+        ?{...h, units:parseFloat((curHold.units+units).toFixed(4)),
+                invested:parseFloat((curHold.invested+amt).toFixed(2))}:h);
+      const existingLots= updLots[form.holdingId]||[];
       const newLot      = { date:form.date, amount:parseFloat(amt.toFixed(2)), nav:parseFloat(lotNav.toFixed(4)), units:parseFloat(units.toFixed(4)) };
-      const updLots     = {...(data.mfLots||{}), [form.holdingId]:[...existingLots, newLot]};
+      updLots = {...updLots, [form.holdingId]:[...existingLots, newLot]};
       upd({transactions:updatedTxns, indiaHoldings:updHoldings, mfLots:updLots});
-    } else if(!isUS && hold?.type==="NPS" && !editId) {
-      // NPS — add contribution to currentValue so India tab updates immediately
-      const updHoldings = indiaHoldings.map(h=>h.id===form.holdingId
-        ?{...h, currentValue:(h.currentValue||0)+amt}:h);
+    } else if(!isUS && hold?.type==="NPS") {
+      const curHold = updHoldings.find(h=>h.id===form.holdingId);
+      updHoldings = updHoldings.map(h=>h.id===form.holdingId
+        ?{...h, currentValue:(curHold.currentValue||0)+amt}:h);
       upd({transactions:updatedTxns, indiaHoldings:updHoldings});
+    } else if(editId && oldEntry) {
+      // Edit on a non-MF/ETF/NPS entry, or type changed — still push reversed holdings if any
+      upd({transactions:updatedTxns, indiaHoldings:updHoldings, mfLots:updLots});
     } else {
       upd({transactions:updatedTxns});
     }

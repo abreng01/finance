@@ -151,7 +151,9 @@ export default function IndiaPage({ data, setData }) {
   };
 
   const shown = ownerF==="all" ? indiaHoldings : indiaHoldings.filter(h=>h.owner===ownerF);
-  const mf    = shown.filter(h=>h.type==="MF"||h.type==="ETF");
+  const ownerOrder = OWNERS.reduce((acc,o,i)=>({...acc,[o.id]:i}),{});
+  const mf    = shown.filter(h=>h.type==="MF"||h.type==="ETF")
+    .slice().sort((a,b)=>(ownerOrder[a.owner]??99)-(ownerOrder[b.owner]??99));
   const other = shown.filter(h=>h.type!=="MF"&&h.type!=="ETF");
 
   // MFs: ONLY use units × currentNav (never stale currentValue from old sessions)

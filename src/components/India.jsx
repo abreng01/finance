@@ -532,24 +532,54 @@ export default function IndiaPage({ data, setData }) {
         {/* Recent pool activity */}
         {poolTxns.length>0&&(
           <div style={{marginTop:12,paddingTop:12,borderTop:`1px solid ${T.border}`}}>
-            <div style={{fontSize:10,color:T.muted,letterSpacing:"0.1em",textTransform:"uppercase",marginBottom:8}}>Recent Activity</div>
-            {[...poolTxns].reverse().slice(0,3).map(t=>{
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
+              <div style={{fontSize:10,color:T.muted,letterSpacing:"0.1em",textTransform:"uppercase"}}>Recent Activity</div>
+              <span style={{fontSize:10,color:T.dim}}>{poolTxns.length} entries</span>
+            </div>
+            {[...poolTxns].reverse().map(t=>{
               const o=own(t.owner); const isD=t.type==="deploy";
               const fund = isD ? indiaHoldings.find(h=>h.id===t.fundId) : null;
               return (
                 <div key={t.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",
-                  fontSize:12,padding:"4px 0",borderBottom:`1px solid ${T.border+"60"}`}}>
+                  fontSize:12,padding:"6px 0",borderBottom:`1px solid ${T.border+"60"}`}}>
                   <div style={{display:"flex",alignItems:"center",gap:8}}>
                     <span style={{fontSize:14}}>{isD?"→":"↑"}</span>
                     <span style={{color:T.muted}}>
-                      {isD?`Deployed to ${fund?.name||"MF"}  (${o.name})`:`Top-up  (${o.name})`}
+                      {isD?`Deployed to ${fund?.name||"MF"} (${o.name})`:`Top-up (${o.name})`}
                     </span>
+                    <span style={{color:T.dim,fontSize:10}}>{t.date}</span>
                   </div>
-                  <div style={{display:"flex",gap:12,alignItems:"center"}}>
+                  <div style={{display:"flex",gap:10,alignItems:"center"}}>
                     <span style={{fontFamily:"monospace",color:isD?T.green:T.gold,fontWeight:600}}>
                       {isD?"+":""}{inr(t.amount)}
                     </span>
-                    <span style={{color:T.dim,fontSize:10}}>{t.date}</span>
+                    <button
+                      onClick={()=>{
+                        if(!window.confirm(`Delete this ${isD?"deploy":"top-up"} of ${inr(t.amount)}?`)) return;
+                        // If deleting a deploy, reverse the MF units/invested
+                        let newHoldings = indiaHoldings;
+                        if(isD && t.fundId) {
+                          const h = indiaHoldings.find(x=>x.id===t.fundId);
+                          if(h) {
+                            const removeUnits = h.currentNav>0 ? t.amount/h.currentNav : 0;
+                            newHoldings = indiaHoldings.map(x=>x.id===t.fundId
+                              ?{...x,
+                                units:parseFloat(Math.max(0,x.units-removeUnits).toFixed(4)),
+                                invested:parseFloat(Math.max(0,x.invested-t.amount).toFixed(2))}
+                              :x);
+                          }
+                        }
+                        upd({
+                          poolTransactions:poolTxns.filter(x=>x.id!==t.id),
+                          indiaHoldings:newHoldings
+                        });
+                      }}
+                      style={{background:"none",border:`1px solid ${T.red}40`,borderRadius:6,
+                        color:T.red,cursor:"pointer",fontSize:11,padding:"2px 8px",
+                        opacity:0.7,transition:"opacity .2s"}}
+                      onMouseEnter={e=>e.target.style.opacity=1}
+                      onMouseLeave={e=>e.target.style.opacity=0.7}
+                    >✕</button>
                   </div>
                 </div>
               );

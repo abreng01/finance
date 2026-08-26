@@ -44,7 +44,7 @@ export default function LiabilitiesPage({ data, setData }) {
   const [delId,       setDelId]      = useState(null);
   const [form,        setForm]       = useState(EMPTY_FORM);
   const [payLoanId,   setPayLoanId]  = useState(null);
-  const [payForm,     setPayForm]    = useState({ date: new Date().toISOString().slice(0,10), amount:'', type:'EMI', note:'' });
+  const [payForm,     setPayForm]    = useState({ date: new Date().toISOString().slice(0,10), amount:'', type:'EMI', note:'', recordOnly:false });
   const [closeId,     setCloseId]    = useState(null);
   const [closeAmt,    setCloseAmt]   = useState('');
   const [calMonth,    setCalMonth]   = useState(new Date().getMonth());
@@ -83,23 +83,24 @@ export default function LiabilitiesPage({ data, setData }) {
     if (!loan) return;
     let newOutstanding = loan.outstanding;
     let newRemaining   = loan.remainingMonths;
-    if (loan.rate > 0) {
-      const interest   = loan.outstanding * calcMonthlyRate(loan.rate);
-      const principal  = Math.max(0, amt - interest);
-      newOutstanding   = Math.max(0, loan.outstanding - principal);
-    } else {
-      // No rate — proportional reduction
-      const principal  = amt;
-      newOutstanding   = Math.max(0, loan.outstanding - principal);
+    if (!payForm.recordOnly) {
+      if (loan.rate > 0) {
+        const interest   = loan.outstanding * calcMonthlyRate(loan.rate);
+        const principal  = Math.max(0, amt - interest);
+        newOutstanding   = Math.max(0, loan.outstanding - principal);
+      } else {
+        newOutstanding   = Math.max(0, loan.outstanding - amt);
+      }
+      if (payForm.type === 'EMI') newRemaining = Math.max(0, newRemaining - 1);
     }
-    if (payForm.type === 'EMI') newRemaining = Math.max(0, newRemaining - 1);
-    const payment = { id:'p'+Date.now(), date:payForm.date, amount:amt, type:payForm.type, note:payForm.note };
+    const payment = { id:'p'+Date.now(), date:payForm.date, amount:amt, type:payForm.type,
+      note:payForm.note, recordOnly:payForm.recordOnly };
     upd({ liabilities: liabilities.map(l=>l.id===payLoanId
       ? {...l, outstanding:Math.round(newOutstanding), remainingMonths:newRemaining,
                payments:[...(l.payments||[]), payment]}
       : l) });
     setPayLoanId(null);
-    setPayForm({ date:new Date().toISOString().slice(0,10), amount:'', type:'EMI', note:'' });
+    setPayForm({ date:new Date().toISOString().slice(0,10), amount:'', type:'EMI', note:'', recordOnly:false });
   };
 
   // Foreclose
@@ -326,7 +327,7 @@ export default function LiabilitiesPage({ data, setData }) {
                           <div style={{display:'flex',gap:4,justifyContent:'flex-end'}}>
                             <button onClick={()=>{
                               setPayLoanId(loan.id);
-                              setPayForm({date:new Date().toISOString().slice(0,10),amount:String(loan.emi),type:'EMI',note:''});
+                              setPayForm({date:new Date().toISOString().slice(0,10),amount:String(loan.emi),type:'EMI',note:'',recordOnly:false});
                             }} title="Log Payment"
                               style={{background:'none',border:`1px solid ${T.green}40`,borderRadius:6,
                                 color:T.green,cursor:'pointer',fontSize:10,padding:'3px 7px'}}>💰</button>
@@ -494,6 +495,17 @@ export default function LiabilitiesPage({ data, setData }) {
               })()}
               <Inp label="Note (optional)" value={payForm.note} placeholder="e.g. Prepaid for Sept"
                 onChange={e=>setPayForm(p=>({...p,note:e.target.value}))}/>
+              <div style={{display:'flex',alignItems:'flex-start',gap:10,
+                background:payForm.recordOnly?'rgba(91,141,239,0.08)':'rgba(255,255,255,0.03)',
+                borderRadius:8,padding:'10px 12px',border:`1px solid ${payForm.recordOnly?'rgba(91,141,239,0.3)':T.border}`}}>
+                <input type="checkbox" id="recordOnly" checked={payForm.recordOnly}
+                  onChange={e=>setPayForm(p=>({...p,recordOnly:e.target.checked}))}
+                  style={{width:15,height:15,cursor:'pointer',marginTop:1,flexShrink:0}}/>
+                <label htmlFor="recordOnly" style={{fontSize:11,color:T.muted,cursor:'pointer',lineHeight:1.5}}>
+                  <b style={{color:payForm.recordOnly?T.blue:T.text}}>Record only</b> — mark as paid in calendar but don't update outstanding or remaining months.
+                  Use this for payments already reflected in your current balance.
+                </label>
+              </div>
               <div style={{display:'flex',gap:10}}>
                 <Btn onClick={()=>setPayLoanId(null)} style={{flex:1}}>Cancel</Btn>
                 <Btn onClick={submitPayment} variant="primary" style={{flex:2}}>Log Payment ✓</Btn>
@@ -537,7 +549,11 @@ export default function LiabilitiesPage({ data, setData }) {
                 <div key={p.id} style={{display:'flex',justifyContent:'space-between',alignItems:'center',
                   padding:'8px 12px',background:T.surf,borderRadius:8,fontSize:12}}>
                   <div>
-                    <div style={{fontWeight:600}}>{p.date}</div>
+                    <div style={{display:'flex',alignItems:'center',gap:6}}>
+                      <span style={{fontWeight:600}}>{p.date}</span>
+                      {p.recordOnly&&<span style={{fontSize:8,color:T.blue,background:'rgba(91,141,239,0.12)',
+                        padding:'1px 5px',borderRadius:6,fontWeight:700}}>RECORD</span>}
+                    </div>
                     <div style={{fontSize:10,color:p.type==='Foreclosure'?T.purple:p.type==='Prepayment'?T.blue:T.green,marginTop:2}}>{p.type}</div>
                     {p.note&&<div style={{fontSize:10,color:T.dim,marginTop:1}}>{p.note}</div>}
                   </div>

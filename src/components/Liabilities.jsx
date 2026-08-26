@@ -447,7 +447,6 @@ export default function LiabilitiesPage({ data, setData }) {
               </label>
             </div>
             <Inp label="Note (optional)" value={form.note} placeholder="e.g. Axis Bank, started Jan 2022"
-            <Inp label="Note (optional)" value={form.note} placeholder="e.g. Axis Bank, started Jan 2022"
               onChange={e=>setForm(p=>({...p,note:e.target.value}))}/>
             <div style={{display:'flex',gap:10}}>
               <Btn onClick={()=>{setShowForm(false);setEditId(null);}} style={{flex:1}}>Cancel</Btn>

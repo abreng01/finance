@@ -19,6 +19,8 @@ export default function HomePage({ data, setPage }) {
 
   // India: exclude NPS from liquid total (shown separately)
   const npsH    = indiaHoldings.find(h=>h.type==="NPS");
+  const totalLiabilities = (data.liabilities||[]).reduce((s,l)=>s+l.outstanding,0);
+  const showLiabilities   = data.showLiabilitiesOnHome !== false && totalLiabilities > 0;
   const npsVal  = npsH ? (npsH.currentValue||0) : 0;
   const indiaV  = indiaHoldings.filter(h=>h.type!=="NPS").reduce((s,h)=>s+getVal(h),0);
   const total   = usINR + indiaV + npsVal;
@@ -83,6 +85,16 @@ export default function HomePage({ data, setPage }) {
         {hasData && (
           <div style={{ display:"flex", gap:20, marginTop:10, flexWrap:"wrap" }}>
             <span style={{ fontSize:13, color:T.muted }}>Invested: <b style={{ color:T.text }}>{inr(totInv)}</b></span>
+            {showLiabilities && (
+              <span style={{ fontSize:13, color:T.red }}>
+                Liabilities: <b>{inr(totalLiabilities)}</b>
+              </span>
+            )}
+            {showLiabilities && (
+              <span style={{ fontSize:13, color:total-totalLiabilities>=0?T.green:T.red, fontWeight:700 }}>
+                Net Worth: <b style={{fontFamily:"monospace"}}>{inr(total-totalLiabilities)}</b>
+              </span>
+            )}
             {glBase>0 && (
               <span style={{ fontSize:13, color:gc(totGain) }}>
                 {totGain>=0?"Unrealised Gain":"Unrealised Loss"}: <b>{inr(Math.abs(totGain))}</b>

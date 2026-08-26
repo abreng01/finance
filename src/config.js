@@ -26,6 +26,7 @@ export const NAV_ITEMS = [
   { id:'inflows',   icon:'💰', label:'Inflows'     },
   { id:'emergency', icon:'🛡️', label:'Emergency'   },
   { id:'tax',       icon:'📋', label:'Tax'         },
+  { id:'liabilities',icon:'🏦', label:'Liabilities' },
   { id:'analytics', icon:'📊', label:'Analytics'   },
 ];
 

@@ -33,6 +33,8 @@ export const SEED = {
     fireAge: 50,
     expectedReturn: 10,
   },
+  liabilities:          [],
+  showLiabilitiesOnHome: true,
   corpusGoal:           { target:10000000, returnRate:12, monthlyInv:200000 },
   mfLots:               {},
   seedVersion:          3,

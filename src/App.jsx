@@ -12,6 +12,7 @@ import Analytics  from './components/Analytics';
 import Inflows    from './components/Inflows';
 import Emergency  from './components/Emergency';
 import Tax        from './components/Tax';
+import Liabilities from './components/Liabilities';
 
 // ── Migrate stored data to latest SEED version ────────────────────────────────
 const migrate = (saved) => {
@@ -154,6 +155,7 @@ export default function App() {
         {page==='inflows'   && <Inflows   data={data} setData={setData}/>}
         {page==='emergency' && <Emergency data={data} setData={setData}/>}
         {page==='tax'       && <Tax       data={data} setData={setData}/>}
+        {page==='liabilities'&& <Liabilities data={data} setData={setData}/>}
       </div>
 
       <style>{`@keyframes spin { to { transform: rotate(360deg) } }`}</style>

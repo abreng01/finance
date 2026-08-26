@@ -35,7 +35,7 @@ function lastDayOfMonth(year, month) {
   return new Date(year, month + 1, 0).getDate();
 }
 
-const EMPTY_FORM = { name:'', type:'Personal Loan', outstanding:'', emi:'', rate:'', remainingMonths:'', dueDay:'5', note:'' };
+const EMPTY_FORM = { name:'', type:'Personal Loan', outstanding:'', emi:'', rate:'', remainingMonths:'', dueDay:'5', autoDebit:false, note:'' };
 
 export default function LiabilitiesPage({ data, setData }) {
   const liabilities = data.liabilities || [];
@@ -57,7 +57,7 @@ export default function LiabilitiesPage({ data, setData }) {
   const openEdit = l => {
     setEditId(l.id);
     setForm({ name:l.name, type:l.type, outstanding:String(l.outstanding), emi:String(l.emi||''),
-      rate:String(l.rate||''), remainingMonths:String(l.remainingMonths||''), dueDay:String(l.dueDay||5), note:l.note||'' });
+      rate:String(l.rate||''), remainingMonths:String(l.remainingMonths||''), dueDay:String(l.dueDay||5), autoDebit:l.autoDebit||false, note:l.note||'' });
     setShowForm(true);
   };
 
@@ -69,7 +69,7 @@ export default function LiabilitiesPage({ data, setData }) {
     if (!form.name || !out) return;
     const emiVal = form.emi ? parseFloat(form.emi) : Math.round(calcEMI(out, rate, rem));
     const entry = { id:editId||'l'+Date.now(), name:form.name, type:form.type, outstanding:out,
-      emi:emiVal, rate, remainingMonths:rem, dueDay, note:form.note, status:'active',
+      emi:emiVal, rate, remainingMonths:rem, dueDay, autoDebit:form.autoDebit, note:form.note, status:'active',
       payments: editId ? (liabilities.find(l=>l.id===editId)?.payments||[]) : [] };
     upd({ liabilities: editId ? liabilities.map(l=>l.id===editId?entry:l) : [...liabilities,entry] });
     setShowForm(false); setEditId(null);
@@ -121,6 +121,12 @@ export default function LiabilitiesPage({ data, setData }) {
   const totalOutstanding   = active.reduce((s,l)=>s+l.outstanding,0);
   const totalEMI           = active.reduce((s,l)=>s+l.emi,0);
   const totalInterestLeft  = active.reduce((s,l)=>s+calcRemainingInterest(l.outstanding,l.rate,l.remainingMonths),0);
+  const nowKey = `${new Date().getFullYear()}-${String(new Date().getMonth()+1).padStart(2,'0')}`;
+  const paidThisMonth = active.reduce((s,loan)=>{
+    const paid = (loan.payments||[]).filter(p=>p.date.startsWith(nowKey)).reduce((s2,p)=>s2+p.amount,0);
+    return s + Math.min(paid, loan.emi);
+  },0);
+  const remainingThisMonth = Math.max(0, totalEMI - paidThisMonth);
 
   // Calendar
   const calDays = new Date(calYear, calMonth+1, 0).getDate();
@@ -153,11 +159,11 @@ export default function LiabilitiesPage({ data, setData }) {
       {active.length>0&&(
         <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(130px,1fr))',gap:10}}>
           {[
-            {label:'Total Outstanding', value:inr(totalOutstanding),               color:T.red},
-            {label:'Monthly EMI',       value:inr(totalEMI),                       color:T.orange},
-            {label:'Interest Left',     value:inr(totalInterestLeft),              color:T.muted},
-            {label:'Total Outgo',       value:inr(totalOutstanding+totalInterestLeft), color:T.text},
-            {label:'Active Loans',      value:String(active.length),               color:T.blue},
+            {label:'Total Outstanding',    value:inr(totalOutstanding),  color:T.red},
+            {label:'Monthly EMI',          value:inr(totalEMI),          color:T.orange},
+            {label:'Remaining This Month', value:inr(remainingThisMonth),color:remainingThisMonth>0?T.orange:T.green},
+            {label:'Paid This Month',      value:inr(paidThisMonth),     color:paidThisMonth>0?T.green:T.dim},
+            {label:'Active Loans',         value:String(active.length),  color:T.blue},
           ].map(c=>(
             <Card key={c.label} style={{padding:'12px 14px'}}>
               <div style={{fontSize:9,color:T.muted,textTransform:'uppercase',letterSpacing:'0.1em',marginBottom:4}}>{c.label}</div>
@@ -201,12 +207,15 @@ export default function LiabilitiesPage({ data, setData }) {
               const today = new Date();
               const isToday = day===today.getDate()&&calMonth===today.getMonth()&&calYear===today.getFullYear();
               const loans   = calEMIs[day]||[];
+              const calDate = new Date(calYear,calMonth,day);
               const isPast  = loans.length > 0
-                ? loans.every(l => (l.payments||[]).some(p => {
-                    const d = new Date(p.date);
-                    return d.getFullYear()===calYear && d.getMonth()===calMonth;
-                  }))
-                : new Date(calYear,calMonth,day) < today;
+                ? loans.every(l =>
+                    (l.payments||[]).some(p => {
+                      const d = new Date(p.date);
+                      return d.getFullYear()===calYear && d.getMonth()===calMonth;
+                    }) || (l.autoDebit && calDate < today)
+                  )
+                : calDate < today;
               return (
                 <div key={day} style={{
                   borderRadius:6,padding:'4px 2px',textAlign:'center',minHeight:44,
@@ -234,10 +243,12 @@ export default function LiabilitiesPage({ data, setData }) {
           <div style={{display:'flex',flexDirection:'column',gap:4}}>
             {Object.entries(calEMIs).sort((a,b)=>+a[0]-+b[0]).map(([day,loans])=>{
               const dueDate = new Date(calYear, calMonth, Math.min(+day, lastDayOfMonth(calYear,calMonth)));
-              const isPast  = loans.every(l => (l.payments||[]).some(p => {
-                const d = new Date(p.date);
-                return d.getFullYear()===calYear && d.getMonth()===calMonth;
-              })) || dueDate < new Date();
+              const isPast  = loans.every(l =>
+                (l.payments||[]).some(p => {
+                  const d = new Date(p.date);
+                  return d.getFullYear()===calYear && d.getMonth()===calMonth;
+                }) || (l.autoDebit && dueDate < new Date())
+              );
               const total   = loans.reduce((s,l)=>s+l.emi,0);
               return (
                 <div key={day} style={{display:'flex',justifyContent:'space-between',alignItems:'center',
@@ -304,9 +315,12 @@ export default function LiabilitiesPage({ data, setData }) {
                           {loan.remainingMonths?`${loan.remainingMonths}m`:'—'}
                         </td>
                         <td style={{padding:'10px 12px',textAlign:'right'}}>
-                          <span style={{fontSize:10,color:daysLeft<=5?T.red:daysLeft<=10?T.orange:T.muted}}>
-                            {loan.dueDay||5}th · {daysLeft}d
-                          </span>
+                          <div style={{textAlign:'right'}}>
+                            <span style={{fontSize:10,color:daysLeft<=5?T.red:daysLeft<=10?T.orange:T.muted}}>
+                              {loan.dueDay||5}th · {daysLeft}d
+                            </span>
+                            {loan.autoDebit&&<div style={{fontSize:8,color:T.blue,fontWeight:700,letterSpacing:'0.05em'}}>AUTO</div>}
+                          </div>
                         </td>
                         <td style={{padding:'10px 12px',textAlign:'right'}}>
                           <div style={{display:'flex',gap:4,justifyContent:'flex-end'}}>
@@ -424,6 +438,15 @@ export default function LiabilitiesPage({ data, setData }) {
               <Inp label="EMI due date (day)" value={form.dueDay} placeholder="e.g. 5" mono
                 onChange={e=>setForm(p=>({...p,dueDay:e.target.value}))}/>
             </div>
+            <div style={{display:'flex',alignItems:'center',gap:10,padding:'10px 0'}}>
+              <input type="checkbox" id="autoDebit" checked={form.autoDebit}
+                onChange={e=>setForm(p=>({...p,autoDebit:e.target.checked}))}
+                style={{width:16,height:16,cursor:'pointer'}}/>
+              <label htmlFor="autoDebit" style={{fontSize:12,color:T.muted,cursor:'pointer'}}>
+                Auto-debit loan (EMI debited automatically, no manual transfer needed)
+              </label>
+            </div>
+            <Inp label="Note (optional)" value={form.note} placeholder="e.g. Axis Bank, started Jan 2022"
             <Inp label="Note (optional)" value={form.note} placeholder="e.g. Axis Bank, started Jan 2022"
               onChange={e=>setForm(p=>({...p,note:e.target.value}))}/>
             <div style={{display:'flex',gap:10}}>

@@ -123,13 +123,14 @@ export default function LiabilitiesPage({ data, setData }) {
   const totalEMI           = active.reduce((s,l)=>s+l.emi,0);
   const totalInterestLeft  = active.reduce((s,l)=>s+calcRemainingInterest(l.outstanding,l.rate,l.remainingMonths),0);
   const nowKey = `${new Date().getFullYear()}-${String(new Date().getMonth()+1).padStart(2,'0')}`;
+
+  // Calendar
+  const calKey  = `${calYear}-${String(calMonth+1).padStart(2,'0')}`;
   const paidThisMonth = active.reduce((s,loan)=>{
-    const paid = (loan.payments||[]).filter(p=>p.date.startsWith(nowKey)).reduce((s2,p)=>s2+p.amount,0);
+    const paid = (loan.payments||[]).filter(p=>p.date.startsWith(calKey)).reduce((s2,p)=>s2+p.amount,0);
     return s + Math.min(paid, loan.emi);
   },0);
   const remainingThisMonth = Math.max(0, totalEMI - paidThisMonth);
-
-  // Calendar
   const calDays = new Date(calYear, calMonth+1, 0).getDate();
   const calFirst = new Date(calYear, calMonth, 1).getDay();
   const calEMIs = {};
@@ -162,8 +163,8 @@ export default function LiabilitiesPage({ data, setData }) {
           {[
             {label:'Total Outstanding',    value:inr(totalOutstanding),  color:T.red},
             {label:'Monthly EMI',          value:inr(totalEMI),          color:T.orange},
-            {label:'Remaining This Month', value:inr(remainingThisMonth),color:remainingThisMonth>0?T.orange:T.green},
-            {label:'Paid This Month',      value:inr(paidThisMonth),     color:paidThisMonth>0?T.green:T.dim},
+            {label:`Remaining (${MONTHS[calMonth]})`, value:inr(remainingThisMonth),color:remainingThisMonth>0?T.orange:T.green},
+            {label:`Paid (${MONTHS[calMonth]})`,      value:inr(paidThisMonth),     color:paidThisMonth>0?T.green:T.dim},
             {label:'Active Loans',         value:String(active.length),  color:T.blue},
           ].map(c=>(
             <Card key={c.label} style={{padding:'12px 14px'}}>
@@ -327,7 +328,9 @@ export default function LiabilitiesPage({ data, setData }) {
                           <div style={{display:'flex',gap:4,justifyContent:'flex-end'}}>
                             <button onClick={()=>{
                               setPayLoanId(loan.id);
-                              setPayForm({date:new Date().toISOString().slice(0,10),amount:String(loan.emi),type:'EMI',note:'',recordOnly:false});
+                              const dd = Math.min(loan.dueDay||5, lastDayOfMonth(calYear,calMonth));
+                              const dueStr = `${calYear}-${String(calMonth+1).padStart(2,'0')}-${String(dd).padStart(2,'0')}`;
+                              setPayForm({date:dueStr,amount:String(loan.emi),type:'EMI',note:'',recordOnly:false});
                             }} title="Log Payment"
                               style={{background:'none',border:`1px solid ${T.green}40`,borderRadius:6,
                                 color:T.green,cursor:'pointer',fontSize:10,padding:'3px 7px'}}>💰</button>

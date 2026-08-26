@@ -283,7 +283,7 @@ export default function LiabilitiesPage({ data, setData }) {
                   return (
                     <>
                       <tr key={loan.id} style={{borderTop:`1px solid ${T.border}`,
-                        background:isExpanded?`rgba(255,152,0,0.04)`:'transparent'}}>
+                        background:'transparent'}}>
                         <td style={{padding:'10px 12px'}}>
                           <div style={{display:'flex',alignItems:'center',gap:6}}>
                             <span style={{width:6,height:6,borderRadius:'50%',background:typeColor(loan.type),flexShrink:0}}/>

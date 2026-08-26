@@ -49,7 +49,7 @@ export default function LiabilitiesPage({ data, setData }) {
   const [closeAmt,    setCloseAmt]   = useState('');
   const [calMonth,    setCalMonth]   = useState(new Date().getMonth());
   const [calYear,     setCalYear]    = useState(new Date().getFullYear());
-  const [expandPay,   setExpandPay]  = useState(null);
+  const [histLoanId,  setHistLoanId] = useState(null);
 
   const upd = p => setData(d => ({ ...d, ...p }));
 
@@ -200,8 +200,13 @@ export default function LiabilitiesPage({ data, setData }) {
               const day   = i+1;
               const today = new Date();
               const isToday = day===today.getDate()&&calMonth===today.getMonth()&&calYear===today.getFullYear();
-              const isPast  = new Date(calYear,calMonth,day) < today;
               const loans   = calEMIs[day]||[];
+              const isPast  = loans.length > 0
+                ? loans.every(l => (l.payments||[]).some(p => {
+                    const d = new Date(p.date);
+                    return d.getFullYear()===calYear && d.getMonth()===calMonth;
+                  }))
+                : new Date(calYear,calMonth,day) < today;
               return (
                 <div key={day} style={{
                   borderRadius:6,padding:'4px 2px',textAlign:'center',minHeight:44,
@@ -229,7 +234,10 @@ export default function LiabilitiesPage({ data, setData }) {
           <div style={{display:'flex',flexDirection:'column',gap:4}}>
             {Object.entries(calEMIs).sort((a,b)=>+a[0]-+b[0]).map(([day,loans])=>{
               const dueDate = new Date(calYear, calMonth, Math.min(+day, lastDayOfMonth(calYear,calMonth)));
-              const isPast  = dueDate < new Date();
+              const isPast  = loans.every(l => (l.payments||[]).some(p => {
+                const d = new Date(p.date);
+                return d.getFullYear()===calYear && d.getMonth()===calMonth;
+              })) || dueDate < new Date();
               const total   = loans.reduce((s,l)=>s+l.emi,0);
               return (
                 <div key={day} style={{display:'flex',justifyContent:'space-between',alignItems:'center',
@@ -272,7 +280,6 @@ export default function LiabilitiesPage({ data, setData }) {
                 {active.map((loan,idx)=>{
                   const daysLeft = daysUntilDue(loan.dueDay||5);
                   const remInt   = calcRemainingInterest(loan.outstanding,loan.rate,loan.remainingMonths);
-                  const isExpanded = expandPay===loan.id;
                   return (
                     <>
                       <tr key={loan.id} style={{borderTop:`1px solid ${T.border}`,
@@ -309,6 +316,13 @@ export default function LiabilitiesPage({ data, setData }) {
                             }} title="Log Payment"
                               style={{background:'none',border:`1px solid ${T.green}40`,borderRadius:6,
                                 color:T.green,cursor:'pointer',fontSize:10,padding:'3px 7px'}}>💰</button>
+                            {(loan.payments||[]).length>0&&(
+                              <button onClick={()=>setHistLoanId(loan.id)} title="Payment History"
+                                style={{background:'none',border:`1px solid ${T.blue}40`,borderRadius:6,
+                                  color:T.blue,cursor:'pointer',fontSize:10,padding:'3px 7px'}}>
+                                📋{loan.payments.length}
+                              </button>
+                            )}
                             <button onClick={()=>openEdit(loan)} title="Edit"
                               style={{background:'none',border:`1px solid ${T.border}`,borderRadius:6,
                                 color:T.muted,cursor:'pointer',fontSize:10,padding:'3px 7px'}}>✏️</button>
@@ -322,27 +336,7 @@ export default function LiabilitiesPage({ data, setData }) {
                         </td>
                       </tr>
                       {/* Payment history row */}
-                      {(loan.payments||[]).length>0&&(
-                        <tr style={{borderTop:`1px dashed ${T.border}40`}}>
-                          <td colSpan={7} style={{padding:'0 12px 8px',paddingTop:4}}>
-                            <button onClick={()=>setExpandPay(isExpanded?null:loan.id)}
-                              style={{background:'none',border:'none',color:T.dim,cursor:'pointer',fontSize:10}}>
-                              {isExpanded?'▲ Hide':'▼ Show'} {loan.payments.length} payment{loan.payments.length!==1?'s':''}
-                            </button>
-                            {isExpanded&&(
-                              <div style={{marginTop:6,display:'flex',flexDirection:'column',gap:3}}>
-                                {[...loan.payments].reverse().map(p=>(
-                                  <div key={p.id} style={{display:'flex',justifyContent:'space-between',
-                                    fontSize:11,padding:'3px 8px',background:T.surf,borderRadius:5}}>
-                                    <span style={{color:T.muted}}>{p.date} · <span style={{color:p.type==='Foreclosure'?T.purple:T.green}}>{p.type}</span></span>
-                                    <span style={{fontFamily:'monospace',fontWeight:600,color:T.green}}>{inr(p.amount)}</span>
-                                  </div>
-                                ))}
-                              </div>
-                            )}
-                          </td>
-                        </tr>
-                      )}
+
                     </>
                   );
                 })}
@@ -508,6 +502,33 @@ export default function LiabilitiesPage({ data, setData }) {
           </div>
         </Modal>
       )}
+
+      {/* Payment History Modal */}
+      {histLoanId&&(()=>{
+        const loan = liabilities.find(l=>l.id===histLoanId);
+        return (
+          <Modal onClose={()=>setHistLoanId(null)}>
+            <div style={{fontWeight:700,fontSize:17,marginBottom:4}}>📋 Payment History</div>
+            <div style={{fontSize:12,color:T.muted,marginBottom:16}}>{loan?.name} · {(loan?.payments||[]).length} payments</div>
+            <div style={{display:'flex',flexDirection:'column',gap:6,maxHeight:400,overflowY:'auto'}}>
+              {[...(loan?.payments||[])].reverse().map(p=>(
+                <div key={p.id} style={{display:'flex',justifyContent:'space-between',alignItems:'center',
+                  padding:'8px 12px',background:T.surf,borderRadius:8,fontSize:12}}>
+                  <div>
+                    <div style={{fontWeight:600}}>{p.date}</div>
+                    <div style={{fontSize:10,color:p.type==='Foreclosure'?T.purple:p.type==='Prepayment'?T.blue:T.green,marginTop:2}}>{p.type}</div>
+                    {p.note&&<div style={{fontSize:10,color:T.dim,marginTop:1}}>{p.note}</div>}
+                  </div>
+                  <div style={{fontFamily:'monospace',fontWeight:700,color:T.green,fontSize:14}}>{inr(p.amount)}</div>
+                </div>
+              ))}
+            </div>
+            <div style={{marginTop:12}}>
+              <Btn onClick={()=>setHistLoanId(null)} style={{width:'100%'}}>Close</Btn>
+            </div>
+          </Modal>
+        );
+      })()}
 
       {/* Delete confirm */}
       {delId&&(

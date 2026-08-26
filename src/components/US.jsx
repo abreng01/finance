@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { T, OWNERS, PPF_ANNUAL_LIMIT, FINNHUB_KEY } from '../config';
+import VestSchedule from './VestSchedule';
 import { inr, usd, pct, gc, own, fmtDate, fmtDateTime, daysLeft, timeLeft, getIndianFY } from '../helpers';
 import { OwnerBadge, Card, Btn, ProgressBar, SectionLabel, StatCard, Modal, Inp, TypeBtn, OwnerBtns, DelConfirm } from './shared';
 
@@ -231,6 +232,7 @@ export default function USPage({ data, setData }) {
         </Modal>
       )}
       {delId && <DelConfirm label={usHoldings.find(h=>h.id===delId)?.ticker} onConfirm={()=>{upd({usHoldings:usHoldings.filter(h=>h.id!==delId)});setDelId(null);}} onCancel={()=>setDelId(null)}/>}
+    <VestSchedule ntnxPrice={(usPrices||{})['NTNX']||0} usdInr={usdInr}/>
     </div>
   );
 }

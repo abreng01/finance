@@ -519,7 +519,24 @@ export default function LiabilitiesPage({ data, setData }) {
                     <div style={{fontSize:10,color:p.type==='Foreclosure'?T.purple:p.type==='Prepayment'?T.blue:T.green,marginTop:2}}>{p.type}</div>
                     {p.note&&<div style={{fontSize:10,color:T.dim,marginTop:1}}>{p.note}</div>}
                   </div>
-                  <div style={{fontFamily:'monospace',fontWeight:700,color:T.green,fontSize:14}}>{inr(p.amount)}</div>
+                  <div style={{display:'flex',alignItems:'center',gap:10}}>
+                    <div style={{fontFamily:'monospace',fontWeight:700,color:T.green,fontSize:14}}>{inr(p.amount)}</div>
+                    <button
+                      onClick={()=>{
+                        if(!window.confirm(`Delete this ${p.type} of ${inr(p.amount)} on ${p.date}?`)) return;
+                        // Reverse the payment effect on outstanding
+                        const interest   = loan.rate>0 ? loan.outstanding*calcMonthlyRate(loan.rate) : 0;
+                        const principal  = Math.max(0, p.amount - interest);
+                        const restoredOut= loan.outstanding + principal;
+                        const restoredRem= p.type==='EMI' ? loan.remainingMonths+1 : loan.remainingMonths;
+                        upd({ liabilities: liabilities.map(l=>l.id===histLoanId
+                          ?{...l, outstanding:Math.round(restoredOut), remainingMonths:restoredRem,
+                                  payments:(l.payments||[]).filter(x=>x.id!==p.id)}
+                          :l) });
+                      }}
+                      style={{background:'none',border:`1px solid ${T.red}40`,borderRadius:6,
+                        color:T.red,cursor:'pointer',fontSize:10,padding:'2px 7px'}}>✕</button>
+                  </div>
                 </div>
               ))}
             </div>

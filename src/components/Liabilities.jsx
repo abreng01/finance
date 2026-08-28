@@ -122,10 +122,29 @@ export default function LiabilitiesPage({ data, setData }) {
   const totalOutstanding   = active.reduce((s,l)=>s+l.outstanding,0);
   const totalEMI           = active.reduce((s,l)=>s+l.emi,0);
   const totalInterestLeft  = active.reduce((s,l)=>s+calcRemainingInterest(l.outstanding,l.rate,l.remainingMonths),0);
+
+  // Debt Freedom
+  const totalPaidAllTime   = [...active,...closed].reduce((s,l)=>s+(l.payments||[]).reduce((s2,p)=>s2+p.amount,0),0);
+  const totalOriginal      = totalOutstanding + totalPaidAllTime;
+  const debtProgressPct    = totalOriginal>0 ? Math.min(100,(totalPaidAllTime/totalOriginal)*100) : 0;
+  const debtFreeMonths     = active.length>0 ? Math.max(...active.map(l=>l.remainingMonths||0)) : 0;
+  const debtFreeDate       = new Date(); debtFreeDate.setMonth(debtFreeDate.getMonth()+debtFreeMonths);
+  const debtFreeDateStr    = debtFreeDate.toLocaleDateString('en-IN',{month:'long',year:'numeric'});
+  const debtMilestones     = [50,40,25,10,0].map(lakhs=>{
+    const target = lakhs*100000;
+    if(totalOutstanding<=target) return {lakhs,achieved:true};
+    const avgPrincipal = totalEMI*0.65;
+    const months = avgPrincipal>0 ? Math.ceil((totalOutstanding-target)/avgPrincipal) : 999;
+    const d = new Date(); d.setMonth(d.getMonth()+months);
+    return {lakhs,achieved:false,dateStr:d.toLocaleDateString('en-IN',{month:'short',year:'numeric'}),months};
+  });
   const nowKey = `${new Date().getFullYear()}-${String(new Date().getMonth()+1).padStart(2,'0')}`;
 
   // Calendar
   const calKey  = `${calYear}-${String(calMonth+1).padStart(2,'0')}`;
+  const isPaidInCalMonth = (loan) =>
+    (loan.payments||[]).some(p=>p.date.startsWith(calKey)) ||
+    (loan.autoDebit && new Date(calYear,calMonth,Math.min(loan.dueDay||5,lastDayOfMonth(calYear,calMonth))) < new Date());
   const paidThisMonth = active.reduce((s,loan)=>{
     const paid = (loan.payments||[]).filter(p=>p.date.startsWith(calKey)).reduce((s2,p)=>s2+p.amount,0);
     return s + Math.min(paid, loan.emi);
@@ -295,8 +314,12 @@ export default function LiabilitiesPage({ data, setData }) {
                   const remInt   = calcRemainingInterest(loan.outstanding,loan.rate,loan.remainingMonths);
                   return (
                     <>
+                      {(()=>{
+                        const paid = isPaidInCalMonth(loan);
+                        return (
                       <tr key={loan.id} style={{borderTop:`1px solid ${T.border}`,
-                        background:'transparent'}}>
+                        background:paid?'rgba(27,175,122,0.06)':'rgba(255,152,0,0.04)',
+                        borderLeft:`3px solid ${paid?T.green:T.orange}`}}>
                         <td style={{padding:'10px 12px'}}>
                           <div style={{display:'flex',alignItems:'center',gap:6}}>
                             <span style={{width:6,height:6,borderRadius:'50%',background:typeColor(loan.type),flexShrink:0}}/>
@@ -353,6 +376,8 @@ export default function LiabilitiesPage({ data, setData }) {
                           </div>
                         </td>
                       </tr>
+                        );
+                      })()}
                       {/* Payment history row */}
 
                     </>

@@ -50,6 +50,8 @@ export default function LiabilitiesPage({ data, setData }) {
   const [calMonth,    setCalMonth]   = useState(new Date().getMonth());
   const [calYear,     setCalYear]    = useState(new Date().getFullYear());
   const [histLoanId,  setHistLoanId] = useState(null);
+  const [sortCol,     setSortCol]    = useState('due');
+  const [sortDir,     setSortDir]    = useState('asc');
 
   const upd = p => setData(d => ({ ...d, ...p }));
 
@@ -151,6 +153,31 @@ export default function LiabilitiesPage({ data, setData }) {
   },0);
   const remainingThisMonth = Math.max(0, totalEMI - paidThisMonth);
   const calDays = new Date(calYear, calMonth+1, 0).getDate();
+
+  const handleSort = col => {
+    if(sortCol===col) setSortDir(d=>d==='asc'?'desc':'asc');
+    else { setSortCol(col); setSortDir('asc'); }
+  };
+
+  const sortedActive = [...active].sort((a,b)=>{
+    let va,vb;
+    if(sortCol==='due'){
+      const pa=isPaidInCalMonth(a), pb=isPaidInCalMonth(b);
+      if(pa!==pb) return sortDir==='asc'?(pa?1:-1):(pa?-1:1);
+      va=daysUntilDue(a.dueDay||5); vb=daysUntilDue(b.dueDay||5);
+      return va-vb;
+    }
+    switch(sortCol){
+      case 'name':      va=a.name;                vb=b.name;                break;
+      case 'outstanding':va=a.outstanding;        vb=b.outstanding;         break;
+      case 'emi':       va=a.emi;                 vb=b.emi;                 break;
+      case 'rate':      va=a.rate||0;             vb=b.rate||0;             break;
+      case 'remaining': va=a.remainingMonths||0;  vb=b.remainingMonths||0;  break;
+      default:          va=0; vb=0;
+    }
+    if(typeof va==='string') return sortDir==='asc'?va.localeCompare(vb):vb.localeCompare(va);
+    return sortDir==='asc'?va-vb:vb-va;
+  });
   const calFirst = new Date(calYear, calMonth, 1).getDay();
   const calEMIs = {};
   active.forEach(loan => {
@@ -302,14 +329,26 @@ export default function LiabilitiesPage({ data, setData }) {
             <table style={{width:'100%',borderCollapse:'collapse',fontSize:12}}>
               <thead>
                 <tr style={{background:T.surf}}>
-                  {['Loan','Outstanding','EMI','Rate','Remaining','Due',''].map(h=>(
-                    <th key={h} style={{padding:'8px 12px',textAlign:h===''||h==='Loan'?'left':'right',
-                      fontSize:9,color:T.muted,textTransform:'uppercase',letterSpacing:'0.08em',fontWeight:700}}>{h}</th>
+                  {[
+                    {label:'Loan',        col:'name',        align:'left'},
+                    {label:'Outstanding', col:'outstanding', align:'right'},
+                    {label:'EMI',         col:'emi',         align:'right'},
+                    {label:'Rate',        col:'rate',        align:'right'},
+                    {label:'Remaining',   col:'remaining',   align:'right'},
+                    {label:'Due / Status',col:'due',         align:'right'},
+                    {label:'',            col:'',            align:'right'},
+                  ].map(h=>(
+                    <th key={h.col} onClick={h.col?()=>handleSort(h.col):undefined}
+                      style={{padding:'8px 12px',textAlign:h.align,fontSize:9,fontWeight:700,
+                        textTransform:'uppercase',letterSpacing:'0.08em',cursor:h.col?'pointer':'default',
+                        color:sortCol===h.col?T.blue:T.muted,userSelect:'none',whiteSpace:'nowrap'}}>
+                      {h.label}{sortCol===h.col?(sortDir==='asc'?' ↑':' ↓'):''}
+                    </th>
                   ))}
                 </tr>
               </thead>
               <tbody>
-                {active.map((loan,idx)=>{
+                {sortedActive.map((loan,idx)=>{
                   const daysLeft = daysUntilDue(loan.dueDay||5);
                   const remInt   = calcRemainingInterest(loan.outstanding,loan.rate,loan.remainingMonths);
                   return (
@@ -340,12 +379,21 @@ export default function LiabilitiesPage({ data, setData }) {
                           {loan.remainingMonths?`${loan.remainingMonths}m`:'—'}
                         </td>
                         <td style={{padding:'10px 12px',textAlign:'right'}}>
-                          <div style={{textAlign:'right'}}>
-                            <span style={{fontSize:10,color:daysLeft<=5?T.red:daysLeft<=10?T.orange:T.muted}}>
-                              {loan.dueDay||5}th · {daysLeft}d
-                            </span>
-                            {loan.autoDebit&&<div style={{fontSize:8,color:T.blue,fontWeight:700,letterSpacing:'0.05em'}}>AUTO</div>}
-                          </div>
+                          {(()=>{
+                            const paid2=isPaidInCalMonth(loan);
+                            return (
+                              <div style={{textAlign:'right'}}>
+                                {paid2?(
+                                  <span style={{fontSize:10,color:T.green,fontWeight:700}}>✅ PAID</span>
+                                ):(
+                                  <span style={{fontSize:10,color:daysLeft<=5?T.red:daysLeft<=10?T.orange:T.muted,fontWeight:600}}>
+                                    🔔 DUE {loan.dueDay||5}th · {daysLeft}d
+                                  </span>
+                                )}
+                                {loan.autoDebit&&<div style={{fontSize:8,color:T.blue,fontWeight:700,letterSpacing:'0.05em',marginTop:2}}>AUTO</div>}
+                              </div>
+                            );
+                          })()}
                         </td>
                         <td style={{padding:'10px 12px',textAlign:'right'}}>
                           <div style={{display:'flex',gap:4,justifyContent:'flex-end'}}>

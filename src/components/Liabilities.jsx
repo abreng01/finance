@@ -322,7 +322,105 @@ export default function LiabilitiesPage({ data, setData }) {
         </Card>
       ):(
         <>
-          <div style={{fontSize:10,fontWeight:700,color:T.muted,textTransform:'uppercase',letterSpacing:'0.12em'}}>
+    
+      {/* Loan End Timeline */}
+      {active.length>0&&(()=>{
+        const today = new Date();
+        const loans_with_end = active.map(l=>{
+          const end = new Date();
+          end.setMonth(end.getMonth()+(l.remainingMonths||0));
+          return {...l, endDate:end, endStr:end.toLocaleDateString('en-IN',{month:'short',year:'numeric'})};
+        }).sort((a,b)=>a.endDate-b.endDate);
+
+        const firstEnd = loans_with_end[0]?.endDate || today;
+        const lastEnd  = loans_with_end[loans_with_end.length-1]?.endDate || today;
+        const totalSpan= Math.max(1,(lastEnd-today)/86400000);
+
+        return (
+          <Card style={{padding:'18px 18px 16px'}}>
+            <div style={{fontSize:10,fontWeight:700,color:T.muted,textTransform:'uppercase',
+              letterSpacing:'0.12em',marginBottom:16}}>
+              📅 Loan End Timeline
+            </div>
+
+            {/* Year markers */}
+            {(()=>{
+              const years = [];
+              for(let y=today.getFullYear(); y<=lastEnd.getFullYear()+1; y++) years.push(y);
+              return (
+                <div style={{position:'relative',marginBottom:6}}>
+                  <div style={{display:'flex',justifyContent:'space-between',marginBottom:4}}>
+                    {years.map(y=>{
+                      const yDate = new Date(y,0,1);
+                      const pct   = Math.min(100,Math.max(0,((yDate-today)/86400000)/totalSpan*100));
+                      return (
+                        <div key={y} style={{position:'absolute',left:`${pct}%`,
+                          fontSize:9,color:T.dim,transform:'translateX(-50%)',whiteSpace:'nowrap'}}>
+                          {y}
+                        </div>
+                      );
+                    })}
+                  </div>
+                  <div style={{height:18}}/>
+                  {/* Timeline base line */}
+                  <div style={{height:2,background:T.border,borderRadius:2,marginBottom:10}}/>
+                </div>
+              );
+            })()}
+
+            {/* Loan bars */}
+            <div style={{display:'flex',flexDirection:'column',gap:8}}>
+              {loans_with_end.map((loan,i)=>{
+                const pct = Math.min(100,((loan.endDate-today)/86400000)/totalSpan*100);
+                const color = typeColor(loan.type);
+                const isPaid = isPaidInCalMonth(loan);
+                return (
+                  <div key={loan.id} style={{display:'flex',alignItems:'center',gap:10}}>
+                    {/* Loan name */}
+                    <div style={{width:110,fontSize:11,fontWeight:600,color:T.text,
+                      flexShrink:0,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>
+                      {loan.name}
+                    </div>
+                    {/* Bar */}
+                    <div style={{flex:1,position:'relative',height:22,background:T.surf,borderRadius:6,overflow:'hidden'}}>
+                      <div style={{
+                        width:`${Math.max(2,pct)}%`,height:'100%',
+                        background:`${color}30`,borderRadius:6,
+                        borderRight:`2px solid ${color}`,
+                        display:'flex',alignItems:'center',paddingLeft:6,
+                      }}>
+                        <span style={{fontSize:9,color:color,fontWeight:700,whiteSpace:'nowrap'}}>
+                          {inr(loan.outstanding)}
+                        </span>
+                      </div>
+                    </div>
+                    {/* End date */}
+                    <div style={{width:64,textAlign:'right',flexShrink:0}}>
+                      <div style={{fontSize:10,fontWeight:700,color:color}}>{loan.endStr}</div>
+                      <div style={{fontSize:9,color:T.dim}}>{loan.remainingMonths}m left</div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Summary */}
+            <div style={{marginTop:14,paddingTop:12,borderTop:`1px solid ${T.border}`,
+              display:'flex',justifyContent:'space-between',flexWrap:'wrap',gap:8}}>
+              <div style={{fontSize:11,color:T.muted}}>
+                First loan closes: <b style={{color:T.green}}>{loans_with_end[0]?.endStr}</b>
+                <span style={{color:T.dim}}> ({loans_with_end[0]?.name})</span>
+              </div>
+              <div style={{fontSize:11,color:T.muted}}>
+                Debt free: <b style={{color:T.blue}}>{loans_with_end[loans_with_end.length-1]?.endStr}</b>
+                <span style={{color:T.dim}}> ({loans_with_end[loans_with_end.length-1]?.name})</span>
+              </div>
+            </div>
+          </Card>
+        );
+      })()}
+
+      <div style={{fontSize:10,fontWeight:700,color:T.muted,textTransform:'uppercase',letterSpacing:'0.12em'}}>
             Personal Loans ({active.length})
           </div>
           <Card style={{padding:0,overflow:'hidden'}}>

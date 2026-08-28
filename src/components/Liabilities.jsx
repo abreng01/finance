@@ -24,11 +24,11 @@ function typeColor(t) {
   return { 'Home Loan':T.blue, 'Personal Loan':T.orange, 'Car Loan':T.green, 'Education Loan':T.purple, 'Other':T.muted }[t] || T.muted;
 }
 
-function daysUntilDue(dueDay) {
-  const now = new Date();
-  const thisMonth = new Date(now.getFullYear(), now.getMonth(), dueDay);
-  if (thisMonth <= now) thisMonth.setMonth(thisMonth.getMonth() + 1);
-  return Math.ceil((thisMonth - now) / 86400000);
+function daysUntilDue(dueDay, calYear, calMonth) {
+  const now    = new Date();
+  const clampedDay = Math.min(dueDay, lastDayOfMonth(calYear, calMonth));
+  const dueDate = new Date(calYear, calMonth, clampedDay);
+  return Math.ceil((dueDate - now) / 86400000);
 }
 
 function lastDayOfMonth(year, month) {
@@ -164,7 +164,7 @@ export default function LiabilitiesPage({ data, setData }) {
     if(sortCol==='due'){
       const pa=isPaidInCalMonth(a), pb=isPaidInCalMonth(b);
       if(pa!==pb) return sortDir==='asc'?(pa?1:-1):(pa?-1:1);
-      va=daysUntilDue(a.dueDay||5); vb=daysUntilDue(b.dueDay||5);
+      va=daysUntilDue(a.dueDay||5,calYear,calMonth); vb=daysUntilDue(b.dueDay||5,calYear,calMonth);
       return va-vb;
     }
     switch(sortCol){
@@ -349,7 +349,7 @@ export default function LiabilitiesPage({ data, setData }) {
               </thead>
               <tbody>
                 {sortedActive.map((loan,idx)=>{
-                  const daysLeft = daysUntilDue(loan.dueDay||5);
+                  const daysLeft = daysUntilDue(loan.dueDay||5, calYear, calMonth);
                   const remInt   = calcRemainingInterest(loan.outstanding,loan.rate,loan.remainingMonths);
                   return (
                     <>
@@ -387,7 +387,7 @@ export default function LiabilitiesPage({ data, setData }) {
                                   <span style={{fontSize:10,color:T.green,fontWeight:700}}>✅ PAID</span>
                                 ):(
                                   <span style={{fontSize:10,color:daysLeft<=5?T.red:daysLeft<=10?T.orange:T.muted,fontWeight:600}}>
-                                    🔔 DUE {loan.dueDay||5}th · {daysLeft}d
+                                    🔔 DUE {Math.min(loan.dueDay||5,lastDayOfMonth(calYear,calMonth))}th · {daysLeft}d
                                   </span>
                                 )}
                                 {loan.autoDebit&&<div style={{fontSize:8,color:T.blue,fontWeight:700,letterSpacing:'0.05em',marginTop:2}}>AUTO</div>}

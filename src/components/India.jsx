@@ -296,7 +296,7 @@ export default function IndiaPage({ data, setData }) {
 
   // ── CRUD ──────────────────────────────────────────────────────────────────
   const openAdd  = () => { setEditId(null); setForm({name:"",type:"MF",category:"",owner:"saiharini",units:"",invested:"",currentValue:"",schemeCode:""}); setFormErr(""); setShowSearch(false); setShowEdit(true); };
-  const openEdit = h  => { setEditId(h.id); setForm({name:h.name,type:h.type,category:h.category||"",owner:h.owner,units:String(h.units||""),invested:String(h.invested||""),currentValue:String(h.currentValue||""),schemeCode:h.schemeCode||""}); setFormErr(""); setShowSearch(false); setShowEdit(true); };
+  const openEdit = h  => { setEditId(h.id); setForm({name:h.name,type:h.type,category:h.category||"",owner:h.owner,units:String(h.units||""),invested:String(h.invested||""),currentValue:String(h.currentValue||""),schemeCode:h.schemeCode||"",monthlyInstalment:String(h.monthlyInstalment||""),rate:String(h.rate||""),totalInstalments:String(h.totalInstalments||""),instalmentsPaid:String(h.instalmentsPaid||""),maturityDate:h.maturityDate||"",maturityAmount:String(h.maturityAmount||"")}); setFormErr(""); setShowSearch(false); setShowEdit(true); };
 
   const submitForm = () => {
     if(!form.name.trim()){setFormErr("Name required");return;}
@@ -639,6 +639,7 @@ export default function IndiaPage({ data, setData }) {
               </thead>
               <tbody>{other.map((h,idx)=>{
                 const isPPF = h.type==="PPF";
+                const isRD  = h.type==="RD";
                 const isNPS = h.type==="NPS";
                 return (
                   <>
@@ -665,6 +666,28 @@ export default function IndiaPage({ data, setData }) {
                       {h.currentValue?inr(h.currentValue):<span style={{color:T.dim,fontWeight:400,fontSize:13}}>Add value →</span>}
                     </td>
                     <td style={{padding:"12px 13px",textAlign:"right"}}>
+                      {isRD&&(()=>{
+                        const paid    = h.instalmentsPaid||0;
+                        const total   = h.totalInstalments||1;
+                        const monthly = h.monthlyInstalment||0;
+                        const curVal  = paid*monthly;
+                        const pct     = Math.min(100,(paid/total)*100);
+                        const dLeft   = h.maturityDate ? Math.ceil((new Date(h.maturityDate)-new Date())/86400000) : null;
+                        return (
+                          <div>
+                            <div style={{fontSize:11,color:T.muted,marginBottom:3}}>
+                              {paid}/{total} instalments · {h.rate||0}% p.a.
+                            </div>
+                            <div style={{background:T.surf,borderRadius:4,height:4,overflow:"hidden",marginBottom:3}}>
+                              <div style={{width:`${pct}%`,height:"100%",background:T.gold,borderRadius:4}}/>
+                            </div>
+                            <div style={{fontSize:10,color:T.muted}}>
+                              Matures: {h.maturityDate?new Date(h.maturityDate).toLocaleDateString("en-IN",{month:"short",year:"numeric"}):"—"}
+                              {h.maturityAmount>0&&<span style={{color:T.green,marginLeft:6}}>→ {inr(h.maturityAmount)}</span>}
+                            </div>
+                          </div>
+                        );
+                      })()}
                       {isPPF&&(()=>{
                         const fy     = getIndianFY();
                         const ppfTxns= (data.transactions||[]).filter(t=>{
@@ -852,7 +875,7 @@ export default function IndiaPage({ data, setData }) {
             <Inp label="Name *" value={form.name} placeholder="e.g. HDFC Nifty Next 50 Index Fund" onChange={e=>setForm(p=>({...p,name:e.target.value}))}/>
 
             <div><div style={{fontSize:11,color:T.muted,marginBottom:8,textTransform:"uppercase",letterSpacing:"0.08em"}}>Type</div>
-              <TypeBtn options={["MF","ETF","PPF","NPS","Stock","FD","Gold"]} value={form.type} onChange={v=>setForm(p=>({...p,type:v}))}/>
+              <TypeBtn options={["MF","ETF","PPF","NPS","RD","Stock","FD","Gold"]} value={form.type} onChange={v=>setForm(p=>({...p,type:v}))}/>
             </div>
 
             <Inp label="Category (optional)" value={form.category} placeholder="e.g. Mid Cap, Index, Debt" onChange={e=>setForm(p=>({...p,category:e.target.value}))}/>
@@ -904,8 +927,32 @@ export default function IndiaPage({ data, setData }) {
               </div>
             </>)}
 
+            {/* RD-specific fields */}
+            {form.type==="RD"&&(
+              <>
+                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
+                  <Inp label="Monthly Instalment (₹) *" value={form.monthlyInstalment||""} placeholder="e.g. 20000" mono
+                    onChange={e=>setForm(p=>({...p,monthlyInstalment:e.target.value}))}/>
+                  <Inp label="Interest Rate (% p.a.)" value={form.rate||""} placeholder="e.g. 7.25" mono
+                    onChange={e=>setForm(p=>({...p,rate:e.target.value}))}/>
+                </div>
+                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
+                  <Inp label="Total Instalments" value={form.totalInstalments||""} placeholder="e.g. 36" mono
+                    onChange={e=>setForm(p=>({...p,totalInstalments:e.target.value}))}/>
+                  <Inp label="Instalments Paid" value={form.instalmentsPaid||""} placeholder="e.g. 1" mono
+                    onChange={e=>setForm(p=>({...p,instalmentsPaid:e.target.value}))}/>
+                </div>
+                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
+                  <Inp label="Maturity Date" value={form.maturityDate||""} type="date"
+                    onChange={e=>setForm(p=>({...p,maturityDate:e.target.value}))}/>
+                  <Inp label="Maturity Amount (₹)" value={form.maturityAmount||""} placeholder="e.g. 805928" mono
+                    onChange={e=>setForm(p=>({...p,maturityAmount:e.target.value}))}/>
+                </div>
+              </>
+            )}
+
             {/* Non-MF: just current value (PPF/NPS don't need invested tracking) */}
-            {(form.type!=="MF"&&form.type!=="ETF")&&(
+            {(form.type!=="MF"&&form.type!=="ETF"&&form.type!=="RD")&&(
               <div>
                 <Inp label="Current Value (₹)" value={form.currentValue} placeholder="e.g. 312000"
                   onChange={e=>setForm(p=>({...p,currentValue:e.target.value}))} mono/>

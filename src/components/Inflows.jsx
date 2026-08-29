@@ -97,6 +97,14 @@ export default function InflowsPage({ data, setData }) {
       updHoldings = updHoldings.map(h=>h.id===form.holdingId
         ?{...h, currentValue:(curHold.currentValue||0)+amt}:h);
       upd({transactions:updatedTxns, indiaHoldings:updHoldings});
+    } else if(!isUS && hold?.type==="RD" && !editId) {
+      // RD — increment instalmentsPaid and update currentValue
+      const rdHold  = updHoldings.find(h=>h.id===form.holdingId);
+      const newPaid = (rdHold.instalmentsPaid||0)+1;
+      const newVal  = newPaid*(rdHold.monthlyInstalment||amt);
+      updHoldings = updHoldings.map(h=>h.id===form.holdingId
+        ?{...h, instalmentsPaid:newPaid, currentValue:newVal}:h);
+      upd({transactions:updatedTxns, indiaHoldings:updHoldings});
     } else if(editId && oldEntry) {
       // Edit on a non-MF/ETF/NPS entry, or type changed — still push reversed holdings if any
       upd({transactions:updatedTxns, indiaHoldings:updHoldings, mfLots:updLots});
@@ -420,7 +428,8 @@ export default function InflowsPage({ data, setData }) {
             {/* Units field — India MF only */}
             {form.portfolio==="india"&&(()=>{
               const holding=indiaHoldings.find(h=>h.id===form.holdingId);
-              if(holding?.type!=="MF"&&holding?.type!=="ETF") return null;
+              if(holding?.type!=="MF"&&holding?.type!=="ETF"&&holding?.type!=="RD") return null;
+              if(holding?.type==="RD") return <div style={{fontSize:11,color:T.muted,padding:"6px 0"}}>💡 Each log = 1 instalment of ₹{inr(holding.monthlyInstalment||0)} · Instalment count auto-updates</div>;
               const isETF = holding.type==="ETF";
               const price = parseFloat(form.units)>0&&parseFloat(form.amount)>0
                 ?(parseFloat(form.amount)/parseFloat(form.units)).toFixed(isETF?2:4):null;

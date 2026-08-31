@@ -129,6 +129,13 @@ export default function InflowsPage({ data, setData }) {
   const ytdINR        = transactions.filter(t=>t.date&&t.date.startsWith(ytdKey)).reduce((s,t)=>s+(t.amountINR||0),0)
                       + poolYTD.reduce((s,t)=>s+(t.amount||0),0);
 
+  // Running balance — months elapsed × monthly target vs actual YTD invested
+  const fyStartMonth  = 0; // Jan (change to 3 for Apr if using Indian FY)
+  const monthsElapsed = now.getMonth() - fyStartMonth + 1;
+  const ytdTarget     = monthlyInflowTarget * monthsElapsed;
+  const ytdSurplus    = ytdINR - ytdTarget;  // positive = surplus, negative = deficit
+  const ytdPct        = ytdTarget > 0 ? Math.min(200, (ytdINR / ytdTarget) * 100) : 0;
+
   // Group by month descending
   // Transaction log — regular investments only (pool activity visible in India tab)
   const grouped = {};
@@ -247,6 +254,49 @@ export default function InflowsPage({ data, setData }) {
         <StatCard label="Total Entries"  value={String(transactions.length)}         color={T.muted}
           sub={`${months.length} month${months.length!==1?"s":""}`}/>
       </div>
+
+      {/* YTD Running Balance */}
+      <Card accent={ytdSurplus>=0?T.green:T.red} style={{padding:"16px 18px"}}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",flexWrap:"wrap",gap:10,marginBottom:12}}>
+          <div>
+            <div style={{fontSize:10,color:T.muted,textTransform:"uppercase",letterSpacing:"0.12em",marginBottom:4}}>
+              📊 {ytdKey} Running Balance
+            </div>
+            <div style={{fontSize:22,fontWeight:800,fontFamily:"monospace",color:ytdSurplus>=0?T.green:T.red}}>
+              {ytdSurplus>=0?"+":""}{inr(Math.abs(ytdSurplus))}
+            </div>
+            <div style={{fontSize:11,color:T.muted,marginTop:3}}>
+              {ytdSurplus>=0?"Surplus — ahead of target":"Deficit — behind target"}
+            </div>
+          </div>
+          <div style={{textAlign:"right"}}>
+            <div style={{fontSize:11,color:T.muted,marginBottom:2}}>{monthsElapsed} months elapsed</div>
+            <div style={{fontSize:13,fontFamily:"monospace"}}>
+              <span style={{color:T.text,fontWeight:600}}>{inr(ytdINR)}</span>
+              <span style={{color:T.muted}}> of {inr(ytdTarget)} target</span>
+            </div>
+            <div style={{fontSize:11,color:T.muted,marginTop:2}}>{inr(monthlyInflowTarget)}/mo × {monthsElapsed} months</div>
+          </div>
+        </div>
+        <div>
+          <div style={{display:"flex",justifyContent:"space-between",fontSize:11,color:T.muted,marginBottom:5}}>
+            <span>{ytdPct.toFixed(1)}% of YTD target</span>
+            <span style={{color:ytdSurplus>=0?T.green:T.orange}}>
+              {ytdSurplus>=0?`${inr(ytdSurplus)} ahead`:`${inr(Math.abs(ytdSurplus))} to catch up`}
+            </span>
+          </div>
+          <div style={{background:T.surf,borderRadius:6,height:8,overflow:"hidden"}}>
+            <div style={{width:`${Math.min(100,ytdPct)}%`,height:"100%",borderRadius:6,
+              background:ytdSurplus>=0?"linear-gradient(90deg,#1baf7a,#2a78d6)":T.orange,transition:"width .3s"}}/>
+          </div>
+        </div>
+        <div style={{marginTop:10,fontSize:11,color:T.dim,lineHeight:1.6}}>
+          {ytdSurplus<0
+            ?`Invest ${inr(monthlyInflowTarget+Math.ceil(Math.abs(ytdSurplus)/Math.max(1,(12-now.getMonth()))))} next month to catch up by year end.`
+            :`You can invest ${inr(Math.max(0,monthlyInflowTarget-ytdSurplus/Math.max(1,12-now.getMonth())))} less next month and stay on track.`
+          }
+        </div>
+      </Card>
 
       {/* Action */}
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>

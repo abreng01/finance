@@ -251,9 +251,7 @@ export default function USPage({ data, setData }) {
         <StatCard label="Value (USD)"  value={usd(totalUSD)}       sub={inr(totalINR)}         color={T.blue}   accent={T.blue}/>
         <StatCard label="Invested"     value={usd(totalInvU)}      sub={inr(totalInvU*usdInr)} color={T.muted}/>
         <StatCard label="Gain / Loss"  value={usd(gainUSD,true)}   sub={totalInvU?pct(gainUSD/totalInvU*100):""} color={gc(gainUSD)} accent={gc(gainUSD)}/>
-        {totalSoldNet > 0 && (
-          <StatCard label="Sold (Net)" value={usd(totalSoldNet)} sub={`${totalSoldQty} shares · ${allSales.length} trades`} color={T.purple} accent={T.purple}/>
-        )}
+        <StatCard label="Sold (Net)" value={usd(totalSoldNet)} sub={allSales.length > 0 ? `${totalSoldQty} shares · ${allSales.length} trades` : "No sales yet"} color={T.purple} accent={T.purple}/>
       </div>
 
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:8}}>

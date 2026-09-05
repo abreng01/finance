@@ -8,7 +8,7 @@ import { OwnerBadge, Card, Btn, ProgressBar, SectionLabel, StatCard, Modal, Inp,
 // INFLOWS PAGE
 // ══════════════════════════════════════════════════════════════════════════════
 export default function InflowsPage({ data, setData }) {
-  const { transactions:rawTransactions=[], indiaHoldings, usHoldings, usdInr, monthlyInflowTarget=252000, poolTransactions=[] } = data;
+  const { transactions:rawTransactions=[], indiaHoldings, usHoldings, usdInr, monthlyInflowTarget=252000, poolTransactions=[], esppContributions=[] } = data;
   // Filter out any stale pool entries that were incorrectly added to transactions before fix
   const transactions = rawTransactions.filter(t=>t.holdingId!=="pool");
   const [showDeployInflows, setShowDeployInflows] = useState(false);
@@ -33,11 +33,36 @@ export default function InflowsPage({ data, setData }) {
     setShowDeployInflows(false);
     setDeployInflowForm({owner:"abilash",amount:"",fundId:"",date:new Date().toISOString().slice(0,10),note:""});
   };
-  const [showAdd, setShowAdd] = useState(false);
-  const [editId,  setEditId]  = useState(null);
-  const [delId,   setDelId]   = useState(null);
-  const [form,    setForm]    = useState({ date:new Date().toISOString().slice(0,10), portfolio:"india", holdingId:"", amount:"", units:"", note:"" });
+  const [showAdd,     setShowAdd]     = useState(false);
+  const [editId,      setEditId]      = useState(null);
+  const [delId,       setDelId]       = useState(null);
+  const [form,        setForm]        = useState({ date:new Date().toISOString().slice(0,10), portfolio:"india", holdingId:"", amount:"", units:"", note:"" });
+  const [showEspp,    setShowEspp]    = useState(false);
+  const [esppForm,    setEsppForm]    = useState({ date:new Date().toISOString().slice(0,10), amountINR:"", note:"" });
+  const [esppDelId,   setEsppDelId]   = useState(null);
   const upd = p => setData(d=>({...d,...p}));
+
+  // ── ESPP helpers ───────────────────────────────────────────────────────────
+  // Current offering period: Sep 2026 start, 6-month periods
+  const ESPP_PERIOD_START = "2026-09-01";
+  const esppPeriodContribs = esppContributions.filter(e => e.date >= ESPP_PERIOD_START);
+  const esppTotalINR       = esppContributions.reduce((s,e) => s+(e.amountINR||0), 0);
+  const esppPeriodINR      = esppPeriodContribs.reduce((s,e) => s+(e.amountINR||0), 0);
+
+  const submitEspp = () => {
+    const amt = parseFloat(esppForm.amountINR);
+    if (!(amt > 0)) return;
+    const entry = {
+      id: "espp"+Date.now(),
+      date: esppForm.date,
+      amountINR: amt,
+      note: esppForm.note,
+      offeringPeriod: "Sep2026-Feb2027"
+    };
+    upd({ esppContributions: [...esppContributions, entry] });
+    setShowEspp(false);
+    setEsppForm({ date:new Date().toISOString().slice(0,10), amountINR:"", note:"" });
+  };
 
   const submitForm = () => {
     if(!form.holdingId||!form.amount) return;
@@ -124,10 +149,14 @@ export default function InflowsPage({ data, setData }) {
   const thisMonth     = transactions.filter(t=>t.date&&t.date.startsWith(thisMonthKey));
   const poolThisMonth = (poolTransactions||[]).filter(t=>t.type==="topup"&&t.date&&t.date.startsWith(thisMonthKey));
   const poolYTD       = (poolTransactions||[]).filter(t=>t.type==="topup"&&t.date&&t.date.startsWith(ytdKey));
+  const esppThisMonth = esppContributions.filter(e=>e.date&&e.date.startsWith(thisMonthKey));
+  const esppYTD       = esppContributions.filter(e=>e.date&&e.date.startsWith(ytdKey));
   const thisMonthINR  = thisMonth.reduce((s,t)=>s+(t.amountINR||0),0)
-                      + poolThisMonth.reduce((s,t)=>s+(t.amount||0),0);
+                      + poolThisMonth.reduce((s,t)=>s+(t.amount||0),0)
+                      + esppThisMonth.reduce((s,e)=>s+(e.amountINR||0),0);
   const ytdINR        = transactions.filter(t=>t.date&&t.date.startsWith(ytdKey)).reduce((s,t)=>s+(t.amountINR||0),0)
-                      + poolYTD.reduce((s,t)=>s+(t.amount||0),0);
+                      + poolYTD.reduce((s,t)=>s+(t.amount||0),0)
+                      + esppYTD.reduce((s,e)=>s+(e.amountINR||0),0);
 
   // Running balance — months elapsed × monthly target vs actual YTD invested
   const fyStartMonth  = 0; // Jan (change to 3 for Apr if using Indian FY)
@@ -164,7 +193,8 @@ export default function InflowsPage({ data, setData }) {
     const label = d.toLocaleDateString("en-IN",{month:"short"});
     const txTotal   = (grouped[k]||[]).reduce((s,t)=>s+(t.amountINR||0),0);
     const poolTotal = poolGrouped[k]||0;
-    return { label, total:Math.round(txTotal+poolTotal), isCurrent:k===thisMonthKey };
+    const esppTotal = esppContributions.filter(e=>(e.date||"").startsWith(k)).reduce((s,e)=>s+(e.amountINR||0),0);
+    return { label, total:Math.round(txTotal+poolTotal+esppTotal), isCurrent:k===thisMonthKey };
   });
 
   const fmtMonth = k => new Date(k+"-01").toLocaleDateString("en-IN",{month:"long",year:"numeric"});
@@ -246,6 +276,52 @@ export default function InflowsPage({ data, setData }) {
           </div>
         </Card>
       )}
+
+      {/* ESPP Contribution strip */}
+      <Card style={{padding:"14px 18px"}}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:10}}>
+          <div>
+            <div style={{fontSize:10,color:T.muted,letterSpacing:"0.12em",textTransform:"uppercase",marginBottom:5}}>
+              📈 NTNX ESPP — Sep 2026 Offering
+            </div>
+            <div style={{display:"flex",alignItems:"baseline",gap:12,flexWrap:"wrap"}}>
+              <span style={{fontSize:20,fontWeight:800,fontFamily:"monospace",color:T.blue}}>
+                {esppPeriodINR>0?inr(esppPeriodINR):"₹0"}
+              </span>
+              <span style={{fontSize:12,color:T.muted}}>
+                contributed · {esppPeriodContribs.length} month{esppPeriodContribs.length!==1?"s":""}
+              </span>
+            </div>
+            {esppPeriodINR>0&&(
+              <div style={{marginTop:6}}>
+                <ProgressBar value={esppPeriodContribs.length} max={6} color={T.blue} h={4}/>
+                <div style={{fontSize:10,color:T.muted,marginTop:3}}>
+                  {esppPeriodContribs.length}/6 months · Period ends Feb 2027 · Shares allocated Mar 2027
+                </div>
+              </div>
+            )}
+          </div>
+          <Btn onClick={()=>{setEsppForm({date:new Date().toISOString().slice(0,10),amountINR:"",note:""});setShowEspp(true);}} variant="blue">
+            + Log ESPP
+          </Btn>
+        </div>
+        {/* Monthly breakdown */}
+        {esppContributions.length>0&&(
+          <div style={{marginTop:12,paddingTop:12,borderTop:`1px solid ${T.border}`,display:"flex",flexWrap:"wrap",gap:8}}>
+            {[...esppContributions].sort((a,b)=>b.date.localeCompare(a.date)).map(e=>(
+              <div key={e.id} style={{display:"flex",alignItems:"center",gap:6,
+                background:"rgba(91,141,239,0.08)",border:`1px solid ${T.blue}25`,
+                borderRadius:8,padding:"6px 10px",fontSize:12}}>
+                <span style={{color:T.muted}}>{new Date(e.date).toLocaleDateString("en-IN",{month:"short",year:"2-digit"})}</span>
+                <span style={{fontFamily:"monospace",fontWeight:700,color:T.blue}}>{inr(e.amountINR)}</span>
+                {e.note&&<span style={{fontSize:10,color:T.muted}}>· {e.note}</span>}
+                <button onClick={()=>setEsppDelId(e.id)}
+                  style={{background:"none",border:"none",color:T.red,cursor:"pointer",fontSize:11,padding:"0 2px",opacity:0.6}}>✕</button>
+              </div>
+            ))}
+          </div>
+        )}
+      </Card>
 
       {/* Summary cards */}
       <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(140px,1fr))",gap:12}}>
@@ -513,6 +589,55 @@ export default function InflowsPage({ data, setData }) {
       )}
 
       {delId&&<DelConfirm label="this entry" onConfirm={()=>{upd({transactions:transactions.filter(t=>t.id!==delId)});setDelId(null);}} onCancel={()=>setDelId(null)}/>}
+
+      {/* ESPP delete confirm */}
+      {esppDelId&&<DelConfirm label="ESPP entry" onConfirm={()=>{upd({esppContributions:esppContributions.filter(e=>e.id!==esppDelId)});setEsppDelId(null);}} onCancel={()=>setEsppDelId(null)}/>}
+
+      {/* ESPP Log modal */}
+      {showEspp&&(
+        <Modal onClose={()=>setShowEspp(false)}>
+          <div style={{fontWeight:700,fontSize:17,marginBottom:4}}>📈 Log ESPP Contribution</div>
+          <div style={{fontSize:12,color:T.muted,marginBottom:20}}>
+            Sep 2026 – Feb 2027 offering period · 15% salary deduction · 15% discount on NTNX
+          </div>
+          <div style={{display:"flex",flexDirection:"column",gap:14}}>
+            <div>
+              <div style={{fontSize:11,color:T.muted,marginBottom:6,textTransform:"uppercase",letterSpacing:"0.08em"}}>Date</div>
+              <input type="date" value={esppForm.date} onChange={e=>setEsppForm(p=>({...p,date:e.target.value}))}
+                style={{width:"100%",background:T.card,border:`1px solid ${T.border}`,borderRadius:8,padding:"10px 13px",
+                  color:T.text,fontSize:13,outline:"none",boxSizing:"border-box",colorScheme:"dark"}}/>
+            </div>
+            <Inp label="Amount Deducted (INR ₹) *" value={esppForm.amountINR}
+              placeholder="e.g. 35000" mono
+              onChange={e=>setEsppForm(p=>({...p,amountINR:e.target.value}))}/>
+            {parseFloat(esppForm.amountINR)>0&&(
+              <div style={{background:"rgba(91,141,239,0.08)",border:`1px solid ${T.blue}30`,borderRadius:10,padding:"12px 14px",fontSize:13}}>
+                <div style={{display:"flex",justifyContent:"space-between",marginBottom:4}}>
+                  <span style={{color:T.muted}}>This month's contribution</span>
+                  <span style={{fontFamily:"monospace",fontWeight:700,color:T.blue}}>{inr(parseFloat(esppForm.amountINR))}</span>
+                </div>
+                <div style={{display:"flex",justifyContent:"space-between"}}>
+                  <span style={{color:T.muted}}>Period total after this</span>
+                  <span style={{fontFamily:"monospace",fontWeight:700,color:T.blue}}>{inr(esppPeriodINR+(parseFloat(esppForm.amountINR)||0))}</span>
+                </div>
+                <div style={{marginTop:8,fontSize:11,color:T.muted}}>
+                  💡 Shares will be allocated at end of Feb 2027 at 15% discount on lower of Sep 2026 / Feb 2027 NTNX price
+                </div>
+              </div>
+            )}
+            <Inp label="Note (optional)" value={esppForm.note}
+              placeholder="e.g. Sep salary deduction"
+              onChange={e=>setEsppForm(p=>({...p,note:e.target.value}))}/>
+            <div style={{display:"flex",gap:10}}>
+              <Btn onClick={()=>setShowEspp(false)} style={{flex:1}}>Cancel</Btn>
+              <Btn onClick={submitEspp} variant="primary" style={{flex:2}}
+                disabled={!(parseFloat(esppForm.amountINR)>0)}>
+                Log ESPP ✓
+              </Btn>
+            </div>
+          </div>
+        </Modal>
+      )}
 {/* Deploy from pool modal */}
       {showDeployInflows&&(
         <Modal onClose={()=>setShowDeployInflows(false)}>

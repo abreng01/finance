@@ -232,10 +232,15 @@ export default function USPage({ data, setData }) {
     setShowEdit(false);
   };
 
+  // ── Totals across all sale histories ─────────────────────────────────────
+  const allSales     = usHoldings.flatMap(h => h.sales || []);
+  const totalSoldNet = allSales.reduce((s, x) => s + (x.netProceeds || 0), 0);
+  const totalSoldQty = allSales.reduce((s, x) => s + (x.qty || 0), 0);
+
   const TH = () => (
     <tr style={{background:T.surf}}>
-      {[["","left"],["Ticker","left"],["Name","left"],["Type","left"],["Shares","right"],["Avg Cost","right"],["Invested","right"],["Price","right"],["Value USD","right"],["Value INR","right"],["G/L %","right"],["","right"]].map(([h,a],i)=>(
-        <th key={i} style={{padding:"10px 13px",textAlign:a,color:T.muted,fontWeight:600,fontSize:10,letterSpacing:"0.1em",textTransform:"uppercase",borderBottom:`1px solid ${T.border}`,whiteSpace:"nowrap"}}>{h}</th>
+      {[["","left"],["Ticker","left"],["Name","left"],["Type","left"],["Shares","right"],["Avg Cost","right"],["Invested","right"],["Price","right"],["Value USD","right"],["Value INR","right"],["G/L %","right"],["Actions","right"]].map(([h,a],i)=>(
+        <th key={i} style={{padding:"10px 13px",textAlign:a,color:T.muted,fontWeight:600,fontSize:10,letterSpacing:"0.1em",textTransform:"uppercase",borderBottom:`1px solid ${T.border}`,whiteSpace:"nowrap",minWidth:i===11?"190px":"auto"}}>{h}</th>
       ))}
     </tr>
   );
@@ -243,9 +248,12 @@ export default function USPage({ data, setData }) {
   return (
     <div style={{padding:20,display:"flex",flexDirection:"column",gap:16}}>
       <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(150px,1fr))",gap:12}}>
-        <StatCard label="Value (USD)"  value={usd(totalUSD)}      sub={inr(totalINR)}   color={T.blue}  accent={T.blue}/>
-        <StatCard label="Invested"     value={usd(totalInvU)}     sub={inr(totalInvU*usdInr)} color={T.muted}/>
-        <StatCard label="Gain / Loss"  value={usd(gainUSD,true)}  sub={totalInvU?pct(gainUSD/totalInvU*100):""} color={gc(gainUSD)} accent={gc(gainUSD)}/>
+        <StatCard label="Value (USD)"  value={usd(totalUSD)}       sub={inr(totalINR)}         color={T.blue}   accent={T.blue}/>
+        <StatCard label="Invested"     value={usd(totalInvU)}      sub={inr(totalInvU*usdInr)} color={T.muted}/>
+        <StatCard label="Gain / Loss"  value={usd(gainUSD,true)}   sub={totalInvU?pct(gainUSD/totalInvU*100):""} color={gc(gainUSD)} accent={gc(gainUSD)}/>
+        {totalSoldNet > 0 && (
+          <StatCard label="Sold (Net)" value={usd(totalSoldNet)} sub={`${totalSoldQty} shares · ${allSales.length} trades`} color={T.purple} accent={T.purple}/>
+        )}
       </div>
 
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:8}}>
@@ -293,16 +301,32 @@ export default function USPage({ data, setData }) {
                     <td style={{padding:"12px 13px",textAlign:"right"}}>
                       {gp!=null?<span style={{color:gc(gp),fontWeight:700,fontSize:12,background:gp>=0?"rgba(0,229,160,0.1)":"rgba(255,94,107,0.1)",padding:"2px 8px",borderRadius:20}}>{pct(gp)}</span>:<span style={{color:T.dim}}>—</span>}
                     </td>
-                    <td style={{padding:"12px 13px"}}>
-                      <div style={{display:"flex",gap:5,justifyContent:"flex-end",flexWrap:"wrap"}}>
+                    <td style={{padding:"8px 13px"}}>
+                      <div style={{display:"flex",gap:4,justifyContent:"flex-end",alignItems:"center",flexWrap:"nowrap"}}>
                         {(h.sales||[]).length>0 && (
-                          <Btn onClick={()=>setHistId(h.id)} style={{padding:"3px 9px",fontSize:11}} title="Sale history">
+                          <button onClick={()=>setHistId(h.id)} title="Sale history"
+                            style={{display:"flex",alignItems:"center",gap:3,padding:"4px 8px",fontSize:11,fontWeight:600,
+                              borderRadius:6,border:`1px solid ${T.border}`,background:"rgba(167,139,250,0.12)",
+                              color:T.purple,cursor:"pointer",whiteSpace:"nowrap"}}>
                             📋 {(h.sales||[]).length}
-                          </Btn>
+                          </button>
                         )}
-                        <Btn onClick={()=>openSell(h)} variant="blue" style={{padding:"3px 9px",fontSize:11}} title="Record sale">💰 Sell</Btn>
-                        <Btn onClick={()=>openEdit(h)} style={{padding:"3px 9px",fontSize:11}}>✏️</Btn>
-                        <Btn onClick={()=>setDelId(h.id)} variant="danger" style={{padding:"3px 9px",fontSize:11}}>🗑</Btn>
+                        <button onClick={()=>openSell(h)} title="Record a sale"
+                          style={{display:"flex",alignItems:"center",gap:3,padding:"4px 8px",fontSize:11,fontWeight:600,
+                            borderRadius:6,border:`1px solid ${T.blue}40`,background:"rgba(91,141,239,0.12)",
+                            color:T.blue,cursor:"pointer",whiteSpace:"nowrap"}}>
+                          💰 Sell
+                        </button>
+                        <button onClick={()=>openEdit(h)} title="Edit"
+                          style={{padding:"4px 7px",fontSize:12,borderRadius:6,border:`1px solid ${T.border}`,
+                            background:"transparent",color:T.muted,cursor:"pointer"}}>
+                          ✏️
+                        </button>
+                        <button onClick={()=>setDelId(h.id)} title="Delete"
+                          style={{padding:"4px 7px",fontSize:12,borderRadius:6,border:`1px solid rgba(255,94,107,0.3)`,
+                            background:"rgba(255,94,107,0.08)",color:"#FF5E6B",cursor:"pointer"}}>
+                          🗑
+                        </button>
                       </div>
                     </td>
                   </tr>

@@ -75,6 +75,25 @@ const NTNX_HISTORICAL_SALES = [
     ],
     orderNumber: "104300679",
     notes: "Proceeds wired in USD"
+  },
+  {
+    id: "sale-rsu-20260917",
+    date: "2026-09-17",
+    type: "RSU",
+    qty: 69,
+    pricePerShare: 69.62,
+    grossProceeds: 4803.78,
+    commission: 4.95,
+    secFees: 0.07,
+    disbursementFee: 25.00,
+    netProceeds: 4773.38,
+    currency: "USD",
+    grantDetails: [
+      { grantNumber: "R0039363", vestPeriod: 3, qty: 56 },
+      { grantNumber: "R0041293", vestPeriod: 4, qty: 13 }
+    ],
+    orderNumber: "",
+    notes: "Sep 15 2026 vest · 106 vested, 37 withheld for tax, 69 released · sold at market open"
   }
 ];
 
@@ -104,12 +123,12 @@ export default function USPage({ data, setData }) {
     const existingIds = new Set((ntnx.sales || []).map(s => s.id));
     const missing = NTNX_HISTORICAL_SALES.filter(s => !existingIds.has(s.id));
     if (missing.length === 0) return;
-    // Only add sales history — do NOT touch share count
+    // Update share count to 1105 (post Sep 2026 vest + sale) and add missing sales
     setData(d => ({
       ...d,
       usHoldings: d.usHoldings.map(h =>
         h.ticker === "NTNX"
-          ? { ...h, sales: [...(h.sales || []), ...missing] }
+          ? { ...h, shares: h.shares > 1105 ? 1105 : h.shares, sales: [...(h.sales || []), ...missing] }
           : h
       )
     }));

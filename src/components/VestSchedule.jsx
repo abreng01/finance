@@ -19,7 +19,7 @@ const VEST_SCHEDULE = [
   // Grant 1 — R0039363
   { grant:'R0039363', date:'2026-03-15', shares:344, vested:true  },
   { grant:'R0039363', date:'2026-06-15', shares:86,  vested:true  },
-  { grant:'R0039363', date:'2026-09-15', shares:86,  vested:false },
+  { grant:'R0039363', date:'2026-09-15', shares:86,  vested:true  },
   { grant:'R0039363', date:'2026-12-15', shares:86,  vested:false },
   { grant:'R0039363', date:'2027-03-15', shares:86,  vested:false },
   { grant:'R0039363', date:'2027-06-15', shares:86,  vested:false },
@@ -34,7 +34,7 @@ const VEST_SCHEDULE = [
   { grant:'R0041293', date:'2025-12-15', shares:20,  vested:true  },
   { grant:'R0041293', date:'2026-03-15', shares:20,  vested:true  },
   { grant:'R0041293', date:'2026-06-15', shares:21,  vested:true  },
-  { grant:'R0041293', date:'2026-09-15', shares:20,  vested:false },
+  { grant:'R0041293', date:'2026-09-15', shares:20,  vested:true  },
   { grant:'R0041293', date:'2026-12-15', shares:20,  vested:false },
   { grant:'R0041293', date:'2027-03-15', shares:21,  vested:false },
   { grant:'R0041293', date:'2027-06-15', shares:20,  vested:false },

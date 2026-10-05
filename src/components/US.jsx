@@ -84,16 +84,32 @@ const NTNX_HISTORICAL_SALES = [
     pricePerShare: 69.62,
     grossProceeds: 4803.78,
     commission: 4.95,
-    secFees: 0.07,
+    secFees: 0.10,
     disbursementFee: 25.00,
-    netProceeds: 4773.38,
+    netProceeds: 4773.73,
     currency: "USD",
     grantDetails: [
       { grantNumber: "R0039363", vestPeriod: 3, qty: 56 },
       { grantNumber: "R0041293", vestPeriod: 4, qty: 13 }
     ],
-    orderNumber: "",
+    orderNumber: "106907782",
     notes: "Sep 15 2026 vest · 106 vested, 37 withheld for tax, 69 released · sold at market open"
+  },
+  {
+    id: "sale-espp-20260925",
+    date: "2026-09-25",
+    type: "ESPP",
+    qty: 35,
+    pricePerShare: 68.48,
+    grossProceeds: 2396.80,
+    commission: 4.95,
+    secFees: 0.05,
+    disbursementFee: 25.00,
+    netProceeds: 2366.80,
+    currency: "USD",
+    grantDetails: [],
+    orderNumber: "107137619",
+    notes: "ESPP Mar–Sep 2026 · purchased 09/21/2026 at $33.56 · gain $34.92/share (~104%) · proceeds wired in USD"
   }
 ];
 
@@ -120,15 +136,23 @@ export default function USPage({ data, setData }) {
   useEffect(() => {
     const ntnx = usHoldings.find(h => h.ticker === "NTNX");
     if (!ntnx) return;
-    const existingIds = new Set((ntnx.sales || []).map(s => s.id));
-    const missing = NTNX_HISTORICAL_SALES.filter(s => !existingIds.has(s.id));
-    if (missing.length === 0) return;
-    // Update share count to 1105 (post Sep 2026 vest + sale) and add missing sales
+    const histIds  = new Set(NTNX_HISTORICAL_SALES.map(s => s.id));
+    const existing = ntnx.sales || [];
+    const stored   = existing.filter(s => histIds.has(s.id));
+    const upToDate = stored.length === NTNX_HISTORICAL_SALES.length &&
+      NTNX_HISTORICAL_SALES.every(s => JSON.stringify(stored.find(x => x.id === s.id)) === JSON.stringify(s));
+    if (upToDate) return;
+    // Share count drops to 1105 only the first time the Sep 17 sale is recorded
+    const firstTime = !existing.some(s => s.id === "sale-rsu-20260917");
+    // Historical sales are upserted by id so corrections always propagate;
+    // sales recorded via the Sell button (other ids) are left untouched
     setData(d => ({
       ...d,
       usHoldings: d.usHoldings.map(h =>
         h.ticker === "NTNX"
-          ? { ...h, shares: h.shares > 1105 ? 1105 : h.shares, sales: [...(h.sales || []), ...missing] }
+          ? { ...h,
+              shares: firstTime && h.shares > 1105 ? 1105 : h.shares,
+              sales: [...(h.sales || []).filter(s => !histIds.has(s.id)), ...NTNX_HISTORICAL_SALES] }
           : h
       )
     }));

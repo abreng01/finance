@@ -139,6 +139,38 @@ export default function InflowsPage({ data, setData }) {
     setShowAdd(false); setEditId(null);
   };
 
+  // ── Delete a logged investment AND reverse its effect on holdings/lots ─────
+  // (Previously delete only removed the transaction, leaving units/invested/lots inflated.)
+  const deleteTxn = id => {
+    const old  = transactions.find(t=>t.id===id);
+    const rest = transactions.filter(t=>t.id!==id);
+    if(!old || old.portfolio==="us") { upd({transactions:rest}); return; }
+
+    const hold = indiaHoldings.find(h=>h.id===old.holdingId);
+    let updHoldings = indiaHoldings;
+    let updLots     = data.mfLots || {};
+
+    if((hold?.type==="MF"||hold?.type==="ETF") && old.units>0) {
+      updHoldings = updHoldings.map(h=>h.id===old.holdingId
+        ?{...h, units:parseFloat(Math.max(0,h.units-old.units).toFixed(4)),
+                invested:parseFloat(Math.max(0,h.invested-old.amount).toFixed(2))}:h);
+      const existing = updLots[old.holdingId]||[];
+      const idx = existing.findIndex(l=>l.date===old.date && Math.abs(l.amount-old.amount)<0.01 && Math.abs(l.units-old.units)<0.0001);
+      if(idx>=0) {
+        const arr = [...existing]; arr.splice(idx,1);
+        updLots = {...updLots, [old.holdingId]:arr};
+      }
+    } else if(hold?.type==="NPS") {
+      updHoldings = updHoldings.map(h=>h.id===old.holdingId
+        ?{...h, currentValue:Math.max(0,(h.currentValue||0)-old.amount)}:h);
+    } else if(hold?.type==="RD") {
+      const paid = Math.max(0,(hold.instalmentsPaid||0)-1);
+      updHoldings = updHoldings.map(h=>h.id===old.holdingId
+        ?{...h, instalmentsPaid:paid, currentValue:paid*(h.monthlyInstalment||old.amount)}:h);
+    }
+    upd({transactions:rest, indiaHoldings:updHoldings, mfLots:updLots});
+  };
+
   const openAdd  = () => { setEditId(null); setForm({date:new Date().toISOString().slice(0,10),portfolio:"india",holdingId:"",amount:"",units:"",note:""}); setShowAdd(true); };
   const openEdit = t  => { setEditId(t.id); setForm({date:t.date,portfolio:t.portfolio,holdingId:t.holdingId,amount:String(t.amount),units:String(t.units||""),note:t.note||""}); setShowAdd(true); };
 
@@ -588,7 +620,7 @@ export default function InflowsPage({ data, setData }) {
         </Modal>
       )}
 
-      {delId&&<DelConfirm label="this entry" onConfirm={()=>{upd({transactions:transactions.filter(t=>t.id!==delId)});setDelId(null);}} onCancel={()=>setDelId(null)}/>}
+      {delId&&<DelConfirm label="this entry" onConfirm={()=>{deleteTxn(delId);setDelId(null);}} onCancel={()=>setDelId(null)}/>}
 
       {/* ESPP delete confirm */}
       {esppDelId&&<DelConfirm label="ESPP entry" onConfirm={()=>{upd({esppContributions:esppContributions.filter(e=>e.id!==esppDelId)});setEsppDelId(null);}} onCancel={()=>setEsppDelId(null)}/>}

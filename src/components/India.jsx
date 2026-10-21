@@ -433,7 +433,9 @@ export default function IndiaPage({ data, setData }) {
       <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(180px,1fr))",gap:12}}>
         {OWNERS.map(o=>{
           const ownerMFs = indiaHoldings.filter(h=>h.owner===o.id&&(h.type==="MF"||h.type==="ETF"));
-          if(!ownerMFs.length) return null;
+          // PPF / NPS / RD etc. — shown as separate lines so MF invested/G-L maths is unchanged
+          const ownerOther = indiaHoldings.filter(h=>h.owner===o.id&&h.type!=="MF"&&h.type!=="ETF"&&(h.currentValue||0)>0);
+          if(!ownerMFs.length && !ownerOther.length) return null;
           const oInv = ownerMFs.reduce((s,h)=>s+(h.invested||0),0);
           const oVal = ownerMFs.reduce((s,h)=>s+getValue(h),0);
           const ownerFundsWithVal = ownerMFs.filter(h=>isValued(h));
@@ -446,7 +448,7 @@ export default function IndiaPage({ data, setData }) {
               <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:10}}>
                 <OwnerBadge id={o.id}/>
                 <span style={{fontSize:13,fontWeight:700,color:o.color}}>{o.name}</span>
-                <span style={{fontSize:10,color:T.muted,marginLeft:"auto"}}>{ownerMFs.length} fund{ownerMFs.length!==1?"s":""}</span>
+                <span style={{fontSize:10,color:T.muted,marginLeft:"auto"}}>{ownerMFs.length>0?`${ownerMFs.length} fund${ownerMFs.length!==1?"s":""}`:""}</span>
               </div>
               <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:6}}>
                 <div>
@@ -462,6 +464,16 @@ export default function IndiaPage({ data, setData }) {
                 <div style={{marginTop:8,paddingTop:8,borderTop:`1px solid ${T.border}`,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
                   <span style={{fontSize:11,color:T.muted}}>Gain / Loss</span>
                   <span style={{fontSize:12,fontWeight:700,color:gc(oGain),fontFamily:"monospace"}}>{inr(Math.abs(oGain))} <span style={{opacity:0.8}}>({pct(oGp)})</span></span>
+                </div>
+              )}
+              {ownerOther.length>0&&(
+                <div style={{marginTop:8,paddingTop:8,borderTop:`1px solid ${T.border}`,display:"flex",flexDirection:"column",gap:4}}>
+                  {ownerOther.map(h=>(
+                    <div key={h.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",fontSize:11}}>
+                      <span style={{color:T.muted}}>{h.type==="NPS"?"NPS (locked)":h.type}</span>
+                      <span style={{fontFamily:"monospace",fontWeight:700,color:T.text}}>{inr(h.currentValue)}</span>
+                    </div>
+                  ))}
                 </div>
               )}
             </Card>

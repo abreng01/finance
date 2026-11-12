@@ -47,6 +47,24 @@ const VEST_SCHEDULE = [
   { grant:'R0041293', date:'2029-03-15', shares:21,  vested:false },
   { grant:'R0041293', date:'2029-06-15', shares:20,  vested:false },
   { grant:'R0041293', date:'2029-09-15', shares:21,  vested:false },
+
+  // Grant 3 — FY27 refresh, granted 2026-11-10 (732 RSUs). Per-date split is an ESTIMATE; update from E*TRADE grant detail
+  { grant:'FY27-NOV26', date:'2026-12-15', shares:46,  vested:false },
+  { grant:'FY27-NOV26', date:'2027-03-15', shares:46,  vested:false },
+  { grant:'FY27-NOV26', date:'2027-06-15', shares:46,  vested:false },
+  { grant:'FY27-NOV26', date:'2027-09-15', shares:46,  vested:false },
+  { grant:'FY27-NOV26', date:'2027-12-15', shares:46,  vested:false },
+  { grant:'FY27-NOV26', date:'2028-03-15', shares:46,  vested:false },
+  { grant:'FY27-NOV26', date:'2028-06-15', shares:46,  vested:false },
+  { grant:'FY27-NOV26', date:'2028-09-15', shares:46,  vested:false },
+  { grant:'FY27-NOV26', date:'2028-12-15', shares:46,  vested:false },
+  { grant:'FY27-NOV26', date:'2029-03-15', shares:46,  vested:false },
+  { grant:'FY27-NOV26', date:'2029-06-15', shares:46,  vested:false },
+  { grant:'FY27-NOV26', date:'2029-09-15', shares:46,  vested:false },
+  { grant:'FY27-NOV26', date:'2029-12-15', shares:45,  vested:false },
+  { grant:'FY27-NOV26', date:'2030-03-15', shares:45,  vested:false },
+  { grant:'FY27-NOV26', date:'2030-06-15', shares:45,  vested:false },
+  { grant:'FY27-NOV26', date:'2030-09-15', shares:45,  vested:false },
 ];
 
 // Merge vests on same date across grants
@@ -90,7 +108,7 @@ export default function VestSchedule({ ntnxPrice, usdInr }) {
             🔒 NTNX RSU Vest Schedule
           </div>
           <div style={{ fontSize:11, color:T.dim }}>
-            2 grants · R0039363 + R0041293 · Quarterly vesting
+            3 grants · R0039363 + R0041293 + FY27-NOV26 · Quarterly vesting
           </div>
         </div>
         {nextVest && (
@@ -130,7 +148,7 @@ export default function VestSchedule({ ntnxPrice, usdInr }) {
       <div style={{ marginBottom:16 }}>
         <div style={{ display:'flex', justifyContent:'space-between', fontSize:11, color:T.muted, marginBottom:5 }}>
           <span>Vesting progress</span>
-          <span>{((totalVested/totalGranted)*100).toFixed(1)}% vested · fully vests Sep 2029</span>
+          <span>{((totalVested/totalGranted)*100).toFixed(1)}% vested · fully vests Sep 2030</span>
         </div>
         <ProgressBar value={totalVested} max={totalGranted} color={T.green} h={8}/>
       </div>
@@ -192,7 +210,7 @@ export default function VestSchedule({ ntnxPrice, usdInr }) {
           Shares vesting by year
         </div>
         <div style={{ display:'flex', flexDirection:'column', gap:6 }}>
-          {['2026','2027','2028','2029'].map(yr => {
+          {['2026','2027','2028','2029','2030'].map(yr => {
             const yearShares = upcoming.filter(v=>v.date.startsWith(yr)).reduce((s,v)=>s+v.shares,0);
             const yearValueINR = yearShares * price * fxRate;
             if (!yearShares) return null;

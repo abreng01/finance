@@ -575,7 +575,7 @@ export default function USPage({ data, setData }) {
         );
       })()}
 
-    <VestSchedule ntnxPrice={(usPrices||{})['NTNX']||0} usdInr={usdInr}/>
+    <VestSchedule ntnxPrice={(usPrices||{})['NTNX']||0} usdInr={usdInr} esppContributions={data.esppContributions||[]}/>
     </div>
   );
 }

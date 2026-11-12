@@ -77,13 +77,16 @@ function mergedSchedule() {
   return Object.values(map).sort((a,b) => a.date.localeCompare(b.date));
 }
 
-export default function VestSchedule({ ntnxPrice, usdInr }) {
+export default function VestSchedule({ ntnxPrice, usdInr, esppContributions = [] }) {
   const [showAll, setShowAll] = useState(false);
   const [planOpen, setPlanOpen] = useState(false);
   const [planPrice, setPlanPrice] = useState(String(Math.round(ntnxPrice || 60)));
   const [planFx,    setPlanFx]    = useState(String(Math.round((usdInr || 95) * 100) / 100));
   const [planTax,   setPlanTax]   = useState('34.3');
   const [planFee,   setPlanFee]   = useState('30');
+  const [esppStart,  setEsppStart]  = useState('39.48');   // implied by the Sep-2026 purchase: 33.56 / 0.85
+  const [esppEnd,    setEsppEnd]    = useState(String(Math.round(ntnxPrice || 60)));
+  const [esppMonths, setEsppMonths] = useState('4');        // further salary deductions expected before 20 Mar 2027
 
   const price   = ntnxPrice || 0;
   const fxRate  = usdInr    || 83.5;
@@ -125,6 +128,23 @@ export default function VestSchedule({ ntnxPrice, usdInr }) {
   }), { shares:0, gross:0, tax:0, fees:0, net:0 });
   const planInp = { width:'100%', background:T.card, border:`1px solid ${T.border}`, borderRadius:6,
     padding:'6px 8px', color:T.text, fontFamily:'monospace', fontSize:13, boxSizing:'border-box' };
+
+  // ── ESPP what-if (next purchase 20 Mar 2027) ──────────────────────────────
+  const ESPP_PERIOD_START = '2026-09-21';
+  const esppPeriod   = esppContributions.filter(e => (e.date||'') >= ESPP_PERIOD_START);
+  const esppLogged   = esppPeriod.reduce((s,e) => s + (e.amountINR||0), 0);
+  const esppAvgMonth = esppPeriod.length ? esppLogged / esppPeriod.length : 0;
+  const esppFutureN  = parseFloat(esppMonths) || 0;
+  const esppExpected = esppLogged + esppAvgMonth * esppFutureN;
+  const eStart = parseFloat(esppStart) || 0;
+  const eEnd   = parseFloat(esppEnd)   || 0;
+  const ePrice = 0.85 * Math.min(eStart || Infinity, eEnd || Infinity);
+  const eShares = (pfx > 0 && isFinite(ePrice) && ePrice > 0) ? Math.floor((esppExpected / pfx) / ePrice) : 0;
+  const eValue  = eShares * eEnd * pfx;
+  const ePerq   = eShares * Math.max(eEnd - ePrice, 0) * pfx;   // discount taxed as perquisite (assumed)
+  const eTax    = ePerq * ptx;
+  const eFees   = eShares > 0 ? pfe * pfx : 0;
+  const eNet    = eValue - eTax - eFees;
 
   const displayedUpcoming = showAll ? upcoming : upcoming.slice(0, 6);
 
@@ -345,6 +365,47 @@ export default function VestSchedule({ ntnxPrice, usdInr }) {
                   </div>
                 );
               })}
+            </div>
+
+            {/* ESPP what-if */}
+            <div style={{ marginTop:16, paddingTop:12, borderTop:`1px solid ${T.border}` }}>
+              <div style={{ fontSize:10, fontWeight:700, color:T.muted, textTransform:'uppercase', letterSpacing:'0.1em', marginBottom:8 }}>
+                ESPP · next purchase 20 Mar 2027
+              </div>
+              <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(130px,1fr))', gap:10, marginBottom:10 }}>
+                {[
+                  { l:'Start price 20 Mar 2026 ($)', v:esppStart,  s:setEsppStart  },
+                  { l:'Price on 20 Mar 2027 ($)',    v:esppEnd,    s:setEsppEnd    },
+                  { l:'More monthly deductions',     v:esppMonths, s:setEsppMonths },
+                ].map(f => (
+                  <div key={f.l}>
+                    <div style={{ fontSize:10, color:T.muted, marginBottom:4 }}>{f.l}</div>
+                    <input type="number" value={f.v} onChange={e => f.s(e.target.value)} style={planInp}/>
+                  </div>
+                ))}
+              </div>
+              <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(120px,1fr))', gap:10 }}>
+                {[
+                  { label:'Contributed so far',     value:inr(esppLogged),   color:T.text  },
+                  { label:'Expected total',         value:inr(esppExpected), color:T.text  },
+                  { label:'Purchase price',         value:isFinite(ePrice)?'$'+ePrice.toFixed(2):'—', color:T.blue },
+                  { label:'Shares (est.)',          value:String(eShares),   color:T.blue  },
+                  { label:'Value at sale price',    value:inr(eValue),       color:T.text  },
+                  { label:'Take-home after tax',    value:inr(eNet),         color:T.green },
+                  { label:'Gain over contributions',value:inr(eNet - esppExpected), color:(eNet-esppExpected)>=0?T.green:T.red },
+                ].map(c => (
+                  <div key={c.label} style={{ background:T.surf, borderRadius:10, padding:'10px 13px' }}>
+                    <div style={{ fontSize:10, color:T.muted, marginBottom:4 }}>{c.label}</div>
+                    <div style={{ fontFamily:'monospace', fontWeight:700, fontSize:14, color:c.color }}>{c.value}</div>
+                  </div>
+                ))}
+              </div>
+              <div style={{ fontSize:10, color:T.dim, marginTop:10, lineHeight:1.6 }}>
+                Purchase price = 85% × the lower of the start price and the price on the purchase date (the start price shown
+                is back-calculated from your Sep-2026 purchase at $33.56, not an E*TRADE figure). Assumes whole shares, sold on
+                purchase day, the discount taxed as perquisite at the tax rate above, and the plan has no price-reset rule.
+                Monthly deductions are projected at your logged average.
+              </div>
             </div>
 
             <div style={{ fontSize:10, color:T.dim, marginTop:10, lineHeight:1.6 }}>

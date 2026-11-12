@@ -43,8 +43,9 @@ export default function InflowsPage({ data, setData }) {
   const upd = p => setData(d=>({...d,...p}));
 
   // ── ESPP helpers ───────────────────────────────────────────────────────────
-  // Current offering period: Sep 2026 start, 6-month periods
-  const ESPP_PERIOD_START = "2026-09-01";
+  // Offering period 20 Mar 2026 - 20 Mar 2027; purchases on 20 Sep 2026 and 20 Mar 2027.
+  // Contributions counted here = current purchase period (after the 20 Sep 2026 purchase).
+  const ESPP_PERIOD_START = "2026-09-21";
   const esppPeriodContribs = esppContributions.filter(e => e.date >= ESPP_PERIOD_START);
   const esppTotalINR       = esppContributions.reduce((s,e) => s+(e.amountINR||0), 0);
   const esppPeriodINR      = esppPeriodContribs.reduce((s,e) => s+(e.amountINR||0), 0);
@@ -314,7 +315,7 @@ export default function InflowsPage({ data, setData }) {
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:10}}>
           <div>
             <div style={{fontSize:10,color:T.muted,letterSpacing:"0.12em",textTransform:"uppercase",marginBottom:5}}>
-              📈 NTNX ESPP — Sep 2026 Offering
+              📈 NTNX ESPP — Offering Mar 2026 – Mar 2027
             </div>
             <div style={{display:"flex",alignItems:"baseline",gap:12,flexWrap:"wrap"}}>
               <span style={{fontSize:20,fontWeight:800,fontFamily:"monospace",color:T.blue}}>
@@ -328,7 +329,7 @@ export default function InflowsPage({ data, setData }) {
               <div style={{marginTop:6}}>
                 <ProgressBar value={esppPeriodContribs.length} max={6} color={T.blue} h={4}/>
                 <div style={{fontSize:10,color:T.muted,marginTop:3}}>
-                  {esppPeriodContribs.length}/6 months · Period ends Feb 2027 · Shares allocated Mar 2027
+                  {esppPeriodContribs.length}/6 months · Next purchase 20 Mar 2027
                 </div>
               </div>
             )}

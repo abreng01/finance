@@ -184,6 +184,12 @@ export default function VestSchedule({ ntnxPrice, usdInr, esppContributions = []
   const eFees   = eShares > 0 ? pfe * pfx : 0;
   const eNet    = eValue - eTax - eFees;
 
+  // In hand for one vest, sold on vest day, using the planner's price / FX / tax / fee
+  const inHand = shares => {
+    const g = shares * pp * pfx;
+    return g - g * ptx - pfe * pfx;
+  };
+
   const displayedUpcoming = showAll ? upcoming : upcoming.slice(0, 6);
 
   return (
@@ -216,6 +222,11 @@ export default function VestSchedule({ ntnxPrice, usdInr, esppContributions = []
             {price > 0 && (
               <div style={{ fontSize:11, color:T.green, marginTop:2, fontFamily:'monospace' }}>
                 ≈ {inr(nextVest.shares * price * fxRate)}
+              </div>
+            )}
+            {pp > 0 && (
+              <div style={{ fontSize:11, color:T.text, marginTop:2, fontFamily:'monospace' }}>
+                in hand ≈ {inr(inHand(nextVest.shares))}
               </div>
             )}
           </div>
@@ -281,7 +292,8 @@ export default function VestSchedule({ ntnxPrice, usdInr, esppContributions = []
         Upcoming vests
       </div>
       <div style={{ fontSize:10, color:T.dim, marginTop:-6, marginBottom:8 }}>
-        Each bar fills from the first vest ({firstDate ? fmtDate(firstDate) : '—'}) and completes on its vest date.
+        In hand = sold on vest day at ${pp} · ₹{pfx}/$ · {(ptx*100).toFixed(1)}% tax · ${pfe} fees — change these in the planner below.
+        <br/>Each bar fills from the first vest ({firstDate ? fmtDate(firstDate) : '—'}) and completes on its vest date.
       </div>
       <div style={{ display:'flex', flexDirection:'column', gap:6 }}>
         {displayedUpcoming.map((v, i) => {
@@ -311,8 +323,13 @@ export default function VestSchedule({ ntnxPrice, usdInr, esppContributions = []
                 <div style={{ textAlign:'right' }}>
                   <div style={{ fontFamily:'monospace', fontWeight:700, color:T.text }}>{v.shares} shares</div>
                   {price > 0 && (
-                    <div style={{ fontSize:11, color:T.green, fontFamily:'monospace' }}>
-                      ≈ {inr(valueINR)}
+                    <div style={{ fontSize:11, color:T.muted, fontFamily:'monospace' }}>
+                      gross ≈ {inr(valueINR)}
+                    </div>
+                  )}
+                  {pp > 0 && (
+                    <div style={{ fontSize:11, color:T.green, fontFamily:'monospace', fontWeight:700 }}>
+                      in hand ≈ {inr(inHand(v.shares))}
                     </div>
                   )}
                 </div>

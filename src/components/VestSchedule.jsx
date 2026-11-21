@@ -4,9 +4,38 @@ import { inr, usd } from '../helpers';
 import { Card, ProgressBar } from './shared';
 
 const TODAY = new Date();
+const TODAY_MID = new Date(TODAY.getFullYear(), TODAY.getMonth(), TODAY.getDate());
+const TODAY_KEY = `${TODAY.getFullYear()}-${String(TODAY.getMonth()+1).padStart(2,'0')}-${String(TODAY.getDate()).padStart(2,'0')}`;
+
+function parseLocal(dateStr) {
+  const [y, m, d] = dateStr.split('-').map(Number);
+  return new Date(y, m - 1, d);
+}
 
 function daysUntil(dateStr) {
-  return Math.ceil((new Date(dateStr) - TODAY) / 86400000);
+  return Math.round((parseLocal(dateStr) - TODAY_MID) / 86400000);
+}
+
+// A vest counts as done once its date has passed, even if the schedule still says vested:false
+const isVested = v => v.vested || v.date < TODAY_KEY;
+
+// Share of the time elapsed between two dates (0..1)
+function elapsedFrac(startStr, endStr) {
+  const s = parseLocal(startStr), e = parseLocal(endStr);
+  if (!(e > s)) return 1;
+  return Math.min(1, Math.max(0, (TODAY - s) / (e - s)));
+}
+
+// Years / months / days from today until a date
+function ymdUntil(dateStr) {
+  const end = parseLocal(dateStr);
+  let cur = new Date(TODAY_MID);
+  if (end <= cur) return { y:0, m:0, d:0 };
+  let y = 0, m = 0;
+  const step = (yy, mm) => new Date(cur.getFullYear() + yy, cur.getMonth() + mm, cur.getDate());
+  while (step(1, 0) <= end) { cur = step(1, 0); y++; }
+  while (step(0, 1) <= end) { cur = step(0, 1); m++; }
+  return { y, m, d: Math.round((end - cur) / 86400000) };
 }
 
 function fmtDate(dateStr) {
@@ -71,7 +100,7 @@ const VEST_SCHEDULE = [
 function mergedSchedule() {
   const map = {};
   VEST_SCHEDULE.forEach(v => {
-    if (!map[v.date]) map[v.date] = { date:v.date, shares:0, vested:v.vested };
+    if (!map[v.date]) map[v.date] = { date:v.date, shares:0, vested:isVested(v) };
     map[v.date].shares += v.shares;
   });
   return Object.values(map).sort((a,b) => a.date.localeCompare(b.date));
@@ -92,11 +121,20 @@ export default function VestSchedule({ ntnxPrice, usdInr, esppContributions = []
   const fxRate  = usdInr    || 83.5;
   const merged  = mergedSchedule();
   const totalGranted  = VEST_SCHEDULE.reduce((s,v) => s+v.shares, 0);
-  const totalVested   = VEST_SCHEDULE.filter(v=>v.vested).reduce((s,v) => s+v.shares, 0);
+  const totalVested   = VEST_SCHEDULE.filter(isVested).reduce((s,v) => s+v.shares, 0);
   const totalUnvested = totalGranted - totalVested;
   const upcoming      = merged.filter(v => !v.vested);
   const nextVest      = upcoming[0];
   const nextDays      = nextVest ? daysUntil(nextVest.date) : null;
+
+  // Countdown meters
+  const firstDate      = merged.length ? merged[0].date : null;
+  const finalDate      = merged.length ? merged[merged.length - 1].date : null;
+  const lastVestedDate = (merged.filter(v => v.vested).slice(-1)[0] || {}).date || firstDate;
+  const finalDays      = finalDate ? daysUntil(finalDate) : 0;
+  const finalYMD       = finalDate ? ymdUntil(finalDate) : { y:0, m:0, d:0 };
+  const timeFrac       = firstDate && finalDate ? elapsedFrac(firstDate, finalDate) : 1;
+  const nextFrac       = nextVest && lastVestedDate ? elapsedFrac(lastVestedDate, nextVest.date) : 1;
 
   // Unvested value in INR
   const unvestedValueUSD = totalUnvested * price;
@@ -163,8 +201,14 @@ export default function VestSchedule({ ntnxPrice, usdInr, esppContributions = []
         {nextVest && (
           <div style={{ textAlign:'right', background:`rgba(91,141,239,0.08)`, borderRadius:10, padding:'8px 14px', border:`1px solid rgba(91,141,239,0.2)` }}>
             <div style={{ fontSize:10, color:T.muted, marginBottom:3 }}>Next vest in</div>
-            <div style={{ fontSize:18, fontWeight:800, fontFamily:'monospace', color:T.blue }}>
-              {nextDays}d
+            <div style={{ fontSize:18, fontWeight:800, fontFamily:'monospace', color: nextDays<=30 ? T.orange : T.blue }}>
+              {nextDays > 0 ? `${nextDays}d` : 'Today'}
+            </div>
+            <div style={{ width:160, margin:'6px 0 2px auto' }}>
+              <ProgressBar value={nextFrac*100} max={100} color={nextDays<=30 ? T.orange : T.blue} h={5}/>
+              <div style={{ fontSize:9, color:T.muted, marginTop:3 }}>
+                {Math.round(nextFrac*100)}% of the way since {fmtDate(lastVestedDate)}
+              </div>
             </div>
             <div style={{ fontSize:10, color:T.muted, marginTop:2 }}>
               {fmtDate(nextVest.date)} · {nextVest.shares} shares
@@ -193,6 +237,36 @@ export default function VestSchedule({ ntnxPrice, usdInr, esppContributions = []
         ))}
       </div>
 
+      {/* Full-vest countdown */}
+      {finalDate && (
+        <div style={{ background:T.surf, borderRadius:10, padding:'12px 14px', marginBottom:12 }}>
+          <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-end', flexWrap:'wrap', gap:8, marginBottom:8 }}>
+            <div>
+              <div style={{ fontSize:10, color:T.muted, textTransform:'uppercase', letterSpacing:'0.1em', marginBottom:4 }}>
+                ⏳ Full vest countdown
+              </div>
+              <div style={{ fontFamily:'monospace', fontWeight:800, fontSize:20, color:T.purple }}>
+                {finalDays > 0 ? `${finalYMD.y}y ${finalYMD.m}m ${finalYMD.d}d` : 'Fully vested 🎉'}
+              </div>
+            </div>
+            <div style={{ textAlign:'right', fontSize:11, color:T.muted }}>
+              {finalDays > 0 && (
+                <div style={{ fontFamily:'monospace', color:T.text, fontWeight:700 }}>
+                  {finalDays.toLocaleString('en-IN')} days
+                </div>
+              )}
+              <div>to {fmtDate(finalDate)} · {upcoming.length} vest{upcoming.length!==1?'s':''} left</div>
+            </div>
+          </div>
+          <ProgressBar value={timeFrac*100} max={100} color={T.purple} h={8}/>
+          <div style={{ display:'flex', justifyContent:'space-between', fontSize:10, color:T.muted, marginTop:4, gap:8 }}>
+            <span>{fmtDate(firstDate)}</span>
+            <span>{(timeFrac*100).toFixed(1)}% of the time elapsed</span>
+            <span>{fmtDate(finalDate)}</span>
+          </div>
+        </div>
+      )}
+
       {/* Vesting progress */}
       <div style={{ marginBottom:16 }}>
         <div style={{ display:'flex', justifyContent:'space-between', fontSize:11, color:T.muted, marginBottom:5 }}>
@@ -206,12 +280,16 @@ export default function VestSchedule({ ntnxPrice, usdInr, esppContributions = []
       <div style={{ fontSize:10, fontWeight:700, color:T.muted, textTransform:'uppercase', letterSpacing:'0.1em', marginBottom:10 }}>
         Upcoming vests
       </div>
+      <div style={{ fontSize:10, color:T.dim, marginTop:-6, marginBottom:8 }}>
+        Each bar fills from the first vest ({firstDate ? fmtDate(firstDate) : '—'}) and completes on its vest date.
+      </div>
       <div style={{ display:'flex', flexDirection:'column', gap:6 }}>
         {displayedUpcoming.map((v, i) => {
           const days     = daysUntil(v.date);
           const valueUSD = v.shares * price;
           const valueINR = valueUSD * fxRate;
           const isNext   = i === 0;
+          const rowFrac  = firstDate ? elapsedFrac(firstDate, v.date) : 0;
           return (
             <div key={v.date} style={{
               display:'flex', justifyContent:'space-between', alignItems:'center',
@@ -224,7 +302,7 @@ export default function VestSchedule({ ntnxPrice, usdInr, esppContributions = []
                 <div>
                   <div style={{ fontSize:13, fontWeight:600 }}>{fmtDate(v.date)}</div>
                   <div style={{ fontSize:11, color:T.dim, marginTop:1 }}>
-                    {days > 0 ? `in ${days} days` : 'Today'}
+                    {days > 0 ? `in ${days} day${days===1?'':'s'}` : 'Today'}
                     {days <= 30 && days > 0 && <span style={{ color:T.orange, marginLeft:6 }}>⚡ soon</span>}
                   </div>
                 </div>
@@ -238,6 +316,10 @@ export default function VestSchedule({ ntnxPrice, usdInr, esppContributions = []
                     </div>
                   )}
                 </div>
+              </div>
+              <div style={{ flexBasis:'100%' }} title={`${Math.round(rowFrac*100)}% of the way from ${fmtDate(firstDate)}`}>
+                <ProgressBar value={rowFrac*100} max={100}
+                  color={isNext ? (days<=30 ? T.orange : T.blue) : 'rgba(91,141,239,0.45)'} h={4}/>
               </div>
             </div>
           );
